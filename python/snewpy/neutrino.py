@@ -12,7 +12,7 @@ class MassHierarchy(IntEnum):
     """Neutrino mass ordering: ``NORMAL`` or ``INVERTED``."""
     NORMAL = 1
     INVERTED = 2
-    
+
     @classmethod
     def derive_from_dm2(cls, dm12_2, dm32_2, dm31_2):
         """derive the mass hierarchy based on the given mass squared differences"""
@@ -22,14 +22,14 @@ class MassHierarchy(IntEnum):
             return MassHierarchy.NORMAL
         else:
             return MassHierarchy.INVERTED
-            
+
 class Flavor(IntEnum):
     """Enumeration of CCSN Neutrino flavors."""
     NU_E = 0
     NU_X = 1
     NU_E_BAR = 2
     NU_X_BAR = 3
-    
+
     def to_tex(self):
         """LaTeX-compatible string representations of flavor."""
         if '_BAR' in self.name:
@@ -49,7 +49,7 @@ class Flavor(IntEnum):
     @property
     def is_antineutrino(self):
         return self.value in (Flavor.NU_E_BAR.value, Flavor.NU_X_BAR.value)
-        
+
 @dataclass
 class MixingParameters3Flavor(Mapping):
     """Mixing angles and mass differences, assuming three neutrino flavors.
@@ -62,7 +62,7 @@ class MixingParameters3Flavor(Mapping):
     theta12: u.Quantity[u.deg]
     theta13: u.Quantity[u.deg]
     theta23: u.Quantity[u.deg]
-    #CP violation phase         
+    #CP violation phase
     deltaCP: u.Quantity[u.deg]
     #square mass difference
     dm21_2: u.Quantity[u.eV**2]
@@ -83,21 +83,21 @@ class MixingParameters3Flavor(Mapping):
         s+=  ['|Parameter|Value|',
               '|:--------|:----:|']
         for name, v in self.__dict__.items():
-            try: 
+            try:
                 s += [f"|{name}|{v._repr_latex_()}"]
             except:
-                try: 
+                try:
                     s += [f"|{name}|{v.name}"]
                 except:
                     s += [f"|{name}|{v}|"]
         return '\n'.join(s)
-        
+
     def __post_init__(self):
         #calculate the missing dm2
-        if self.dm31_2 is None: 
+        if self.dm31_2 is None:
             self.dm31_2 = self.dm32_2+self.dm21_2
-        if self.dm32_2 is None: 
-            self.dm32_2 = self.dm31_2-self.dm21_2  
+        if self.dm32_2 is None:
+            self.dm32_2 = self.dm31_2-self.dm21_2
         #evaluate mass ordering
         if self.mass_order is None:
             self.mass_order = MassHierarchy.derive_from_dm2(*self.get_mass_squared_differences())
@@ -117,29 +117,41 @@ class MixingParameters3Flavor(Mapping):
 
     def get_mixing_angles(self):
         """Mixing angles of the PMNS matrix.
-        
+
         Returns
         -------
         tuple
             Angles theta12, theta13, theta23.
         """
         return (self.theta12, self.theta13, self.theta23)
-        
+
+    def get_deltaCP(self):
+        """Mixing angles of the PMNS matrix.
+
+        Returns
+        -------
+        tuple
+            Angle deltaCP
+        """
+
+        return (self.deltaCP)
+
+
     def get_mass_squared_differences(self):
         """Mass squared differences .
-        
+
         Returns
         -------
         tuple
             dm21_2, dm31_2, dm32_2.
-        """        
+        """
         return (self.dm21_2, self.dm31_2, self.dm32_2)
 
 @dataclass
 class MixingParameters4Flavor(MixingParameters3Flavor):
-    """A class for four flavor neutrino mixing. 
+    """A class for four flavor neutrino mixing.
     ..Note: it is an extension of :class:`MixingParameters3Flavor`, and can be constructed using it:
-    
+
         >>> pars_3f = MixingParameters() #standard 3flavor mixing
         >>> pars_4f = MixingParameters4Flavor(**pars_3f, theta14=90<<u.deg, dm41_2=1<<u.GeV**2)
     """
@@ -151,7 +163,7 @@ class MixingParameters4Flavor(MixingParameters3Flavor):
     dm41_2: u.Quantity[u.eV**2] = 0<<u.eV**2
     dm42_2: Optional[u.Quantity] = None
     dm43_2: Optional[u.Quantity] = None
-    
+
     def __post_init__(self):
         super().__post_init__()
         self.dm42_2 = self.dm42_2 or self.dm41_2 - self.dm21_2
@@ -175,7 +187,7 @@ parameter_presets = {
             dm31_2 =  2.517e-3 << u.eV**2
         ),
         MassHierarchy.INVERTED:
-        MixingParameters3Flavor(    
+        MixingParameters3Flavor(
             theta12 = 33.45 << u.deg,
             theta13 = 8.60 << u.deg,
             theta23 = 49.30 << u.deg,
@@ -195,7 +207,7 @@ parameter_presets = {
             dm31_2 = 2.507e-3 << u.eV**2
         ),
         MassHierarchy.INVERTED:
-        MixingParameters3Flavor(        
+        MixingParameters3Flavor(
             theta12 = 33.41 << u.deg,
             theta13 = 8.57 << u.deg,
             theta23 = 49.00 << u.deg,
@@ -226,7 +238,7 @@ parameter_presets = {
         )
     }
 }
-   
+
 
 def MixingParameters(mh:MassHierarchy=MassHierarchy.NORMAL, version:str='NuFIT5.0'):
     return parameter_presets[version][mh]
