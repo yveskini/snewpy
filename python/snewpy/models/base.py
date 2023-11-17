@@ -203,8 +203,15 @@ class SupernovaModel(ABC):
             Time to evaluate initial and oscillated spectra.
         E : astropy.Quantity or ndarray of astropy.Quantity
             Energies to evaluate the initial and oscillated spectra.
-        flavor_xform : FlavorTransformation
-            An instance from the flavor_transformation module.
+
+        distance : float
+            distance to the supernova assumed to be in kpc
+
+        neutrino_masses: None or List
+            Neutrino masses list [m1,m2,m3]. If None, then used the default SNEWPY
+        mass_hierachy: str
+            mass_hierachy="NO" for Normal ordering or "IO" for INVERTED ordering
+        snmodel_dict : dict
 
         Returns
         -------
@@ -359,8 +366,11 @@ class SupernovaModel(ABC):
             Energies to evaluate the the neutrino spectra.
         distance : astropy.Quantity or float (in kpc)
             Distance from supernova.
-        flavor_xform : FlavorTransformation
-            An instance from the flavor_transformation module.
+        neutrino_masses: None or List
+            Neutrino masses list [m1,m2,m3]. If None, then used the default SNEWPY
+        mass_hierachy: str
+            mass_hierachy="NO" for Normal ordering or "IO" for INVERTED ordering
+
 
         Returns
         -------

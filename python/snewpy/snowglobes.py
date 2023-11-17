@@ -122,6 +122,11 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
         Start of time interval to integrate over, or list of start times of the time series bins.
     tend : astropy.Quantity or None
         End of time interval to integrate over, or list of end times of the time series bins.
+
+    neutrino_masses: None or List
+        Neutrino masses list [m1,m2,m3]. If None, then used the default SNEWPY
+    mass_hierachy: str
+        mass_hierachy="NO" for Normal ordering or "IO" for INVERTED ordering
     snmodel_dict : dict
         Additional arguments for setting up the supernova model. See documentation of relevant ``SupernovaModel`` subclass for available options. (Optional)
 
