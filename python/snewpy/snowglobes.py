@@ -100,7 +100,7 @@ def generate_time_series(model_path, model_type, transformation_type, d, output_
     fluence.save(tfname)
     return tfname
 
-def generate_fluence(model_path, model_type, transformation_type, d, output_filename=None, tstart=None, tend=None, snmodel_dict={}):
+def generate_fluence(model_path, model_type, transformation_type, d, output_filename=None, tstart=None, tend=None, neutrino_masses=None,mass_hierachy="NO",snmodel_dict={}):
     """Generate fluence files in SNOwGLoBES format.
 
     This version will subsample the times in a supernova model, produce energy
@@ -137,6 +137,7 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
     flavor_transformation = flavor_transformation_dict[transformation_type]
 
     model_dir, model_file = os.path.split(os.path.abspath(model_path))
+    print("Yves",**snmodel_dict)
     snmodel = model_class(model_path, **snmodel_dict)
 
     #set the timings up
@@ -157,7 +158,21 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
     energy   = np.arange(0, 101, 0.2) << u.MeV
     #energy bins similar to SNOwGLoBES
     energy_t = (np.linspace(0, 100, 201)+0.25) << u.MeV
-    flux = snmodel.get_flux(t=snmodel.get_time(), E=energy,  distance=d, flavor_xform=flavor_transformation)
+
+
+    ###   Adding extra line #######
+    # If no masses provided, do nothing. Just use the old SNEWPY code
+    if neutrino_masses ==None:
+        flux = snmodel.get_flux(t=snmodel.get_time(), E=energy,  distance=d, flavor_xform=flavor_transformation)
+
+    else:
+        # else, take the new get_flux that we added
+        flux = snmodel.get_flux_project(t=snmodel.get_time(),
+                                        E=energy,
+                                        distance=d,
+                                        neutrino_masses=neutrino_masses,
+                                        mass_hierachy=mass_hierachy)
+
     fluence = flux.integrate('time', limits = times).integrate('energy', limits = energy_t)
     times = fluence.time
     #store the energy bin centers instead of the edges
@@ -311,7 +326,7 @@ def collate(SNOwGLoBESdir, tarball_path, detector_input="", skip_plots=False, ve
         return t
 
     def do_plot(table, params):
-        
+
         #plotting the events from given table
         flux,det,weighted,smeared = params
         for c in table.columns:

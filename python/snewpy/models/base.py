@@ -8,6 +8,7 @@ from astropy import units as u
 from astropy.table import Table, join
 from astropy.units import UnitTypeError, get_physical_type
 from astropy.units.quantity import Quantity
+from astropy import constants as aconst
 from scipy.special import loggamma
 from snewpy import _model_downloader
 
@@ -48,7 +49,7 @@ class SupernovaModel(ABC):
         """
         self.time = time
         self.metadata = metadata
-        
+
     def __repr__(self):
         """Default representation of the model.
         """
@@ -85,7 +86,7 @@ class SupernovaModel(ABC):
             s += ['|Parameter|Value|',
                   '|:--------|:----:|']
             for name, v in self.metadata.items():
-                try: 
+                try:
                     s += [f"|{name} | ${v.value:g}$ {v.unit:latex}|"]
                 except:
                     s += [f"|{name} | {v} |"]
@@ -153,7 +154,7 @@ class SupernovaModel(ABC):
 
         transformed_spectra[Flavor.NU_X] = \
             flavor_xform.prob_xe(t, E) * initialspectra[Flavor.NU_E] + \
-            flavor_xform.prob_xx(t, E) * initialspectra[Flavor.NU_X] 
+            flavor_xform.prob_xx(t, E) * initialspectra[Flavor.NU_X]
 
         transformed_spectra[Flavor.NU_E_BAR] = \
             flavor_xform.prob_eebar(t, E) * initialspectra[Flavor.NU_E_BAR] + \
@@ -161,9 +162,9 @@ class SupernovaModel(ABC):
 
         transformed_spectra[Flavor.NU_X_BAR] = \
             flavor_xform.prob_xebar(t, E) * initialspectra[Flavor.NU_E_BAR] + \
-            flavor_xform.prob_xxbar(t, E) * initialspectra[Flavor.NU_X_BAR] 
+            flavor_xform.prob_xxbar(t, E) * initialspectra[Flavor.NU_X_BAR]
 
-        return transformed_spectra   
+        return transformed_spectra
 
     def get_flux (self, t, E, distance, flavor_xform=NoTransformation()):
         """Get neutrino flux through 1cm^2 surface at the given distance
@@ -182,7 +183,7 @@ class SupernovaModel(ABC):
         Returns
         -------
         dict
-            Dictionary of neutrino fluxes in [neutrinos/(cm^2*erg*s)], 
+            Dictionary of neutrino fluxes in [neutrinos/(cm^2*erg*s)],
             keyed by neutrino flavor.
 
         """
@@ -193,6 +194,187 @@ class SupernovaModel(ABC):
         array = np.stack([f[flv] for flv in sorted(Flavor)])
         return  Flux(data=array*factor, flavor=np.sort(Flavor), time=t, energy=E)
 
+    def get_transformed_spectra_project(self, t, E, distance, neutrino_masses, mass_hierachy):
+        """Get neutrino spectra after applying oscillation.
+
+        Parameters
+        ----------
+        t : astropy.Quantity
+            Time to evaluate initial and oscillated spectra.
+        E : astropy.Quantity or ndarray of astropy.Quantity
+            Energies to evaluate the initial and oscillated spectra.
+        flavor_xform : FlavorTransformation
+            An instance from the flavor_transformation module.
+
+        Returns
+        -------
+        dict
+            Dictionary of transformed spectra, keyed by neutrino flavor.
+        """
+        print("This is what I'm using")
+
+        if mass_hierachy == "NO":
+            theta12 = 33.44<< u.deg
+            theta13 = 8.57 << u.deg
+            theta23 = 49.20 << u.deg
+            deltaCP = 197  << u.deg
+            dm21_2 =  7.42e-5  << u.eV**2
+            dm31_2 =  2.517e-3 << u.eV**2
+
+        elif mass_hierachy == "IO":
+            theta12 = 33.45 << u.deg
+            theta13 = 8.60 << u.deg
+            theta23 = 49.30 << u.deg
+            deltaCP = 282 << u.deg
+            dm21_2 = 7.42e-5 << u.eV**2
+            dm32_2 = -2.498e-3 << u.eV**2
+
+        else:
+            print(" Incorrect mass hierarchy")
+            exit()
+
+        deltaCP_rad = deltaCP.to(u.rad).value # Converting to radian. Not neccessary for angles.
+        e_mdeltaCP = np.exp(-1j*deltaCP_rad)
+        e_deltaCP = np.exp(1j*deltaCP_rad)
+
+
+        # A few precomputation.
+        c_12=float(np.cos(theta12))
+        s_12=float(np.sin(theta12))
+        c_13=float(np.cos(theta13))
+        s_13=float(np.sin(theta13))
+        c_23=float(np.cos(theta23))
+        s_23=float(np.sin(theta23))
+        ## Computing PMNX elements
+
+        # \nu_e row
+        self.U_e1=c_13*c_12
+        self.U_e2=c_13*s_12
+        self.U_e3=s_13*s_12*e_mdeltaCP
+
+        # \nu_\mu row
+        self.U_u1 = -c_23*s_12-s_23*s_13*c_12*e_deltaCP
+        self.U_u2 = c_23*c_12 -s_23*s_13*s_12*e_deltaCP
+        self.U_u3=  s_23*c_13
+
+        # \nu_\tau row
+        self.U_t1= s_23*s_12-c_23*s_13*c_12*e_deltaCP
+        self.U_t2=-s_23*c_12-c_23*s_13*s_12*e_deltaCP
+        self.U_t3= c_23*c_13
+
+        distance = distance << u.kpc  # Assume distance is in Kpc
+        distance = distance.to('m') # Convert distance to  m
+
+        # Computing time delay dela_ts
+        neutrino_masses = neutrino_masses  << u.eV # Assume the masses are given in #!/usr/bin/env python
+        neutrino_masses = neutrino_masses.to("MeV")
+
+                # Creating a new energy grid to have the same shape as the time 't'
+        # Going to use the same bounds as the default energy # -*- coding: utf-8 -*-
+
+        energy=np.linspace(E[0], E[-1], t.shape[0])
+
+        #print("Yves", t.shape[0])
+        # Avoid division by zero, I'm taking the smallest floating point of numpy
+        energy[energy==0] = np.finfo(float).eps * E.unit
+
+
+        delta_t1=0.5*(distance/aconst.c)*(neutrino_masses[0]/energy)**2
+        delta_t2=0.5*(distance/aconst.c)*(neutrino_masses[1]/energy)**2
+        delta_t3=0.5*(distance/aconst.c)*(neutrino_masses[2]/energy)**2
+
+        #print("Here",delta_t1, delta_t2,delta_t3)
+
+        # Compute initial flux with time delays
+        initialspectra_shited_by_delta_t1 = self.get_initial_spectra(t-delta_t1, E)
+        initialspectra_shited_by_delta_t2 = self.get_initial_spectra(t-delta_t2, E)
+        initialspectra_shited_by_delta_t3 = self.get_initial_spectra(t-delta_t3, E)
+
+        transformed_spectra = {}
+
+        if mass_hierachy == "NO":
+
+            transformed_spectra[Flavor.NU_E] = (abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E] + \
+                                               (abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + \
+                                               (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X]
+
+
+            transformed_spectra[Flavor.NU_E_BAR] = (abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_E_BAR] + \
+                                                   (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] + \
+                                                   (abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X_BAR]
+
+
+            transformed_spectra[Flavor.NU_X] = 0.5*(abs(self.U_u3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E] + \
+                                               0.5*(abs(self.U_t3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E] + \
+                                               0.5*(abs(self.U_u1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + \
+                                               0.5*(abs(self.U_t1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + \
+                                               0.5*(abs(self.U_u2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X] + \
+                                               0.5*(abs(self.U_t2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X]
+
+            transformed_spectra[Flavor.NU_X_BAR] = 0.5*(abs(self.U_u1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_E_BAR] + \
+                                                   0.5*(abs(self.U_t1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_E_BAR] + \
+                                                   0.5*(abs(self.U_u2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] + \
+                                                   0.5*(abs(self.U_t2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] + \
+                                                   0.5*(abs(self.U_u3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X_BAR] + \
+                                                   0.5*(abs(self.U_t3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X_BAR]
+
+        if mass_hierachy == "IO":
+
+            transformed_spectra[Flavor.NU_E] = (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_E] + \
+                                               (abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + \
+                                               (abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X]
+
+
+            transformed_spectra[Flavor.NU_E_BAR] = (abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E_BAR] + \
+                                                   (abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X_BAR] + \
+                                                   (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR]
+
+
+            transformed_spectra[Flavor.NU_X] = 0.5*(abs(self.U_u2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_E] + \
+                                               0.5*(abs(self.U_t2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_E] + \
+                                               0.5*(abs(self.U_u1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + \
+                                               0.5*(abs(self.U_t1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + \
+                                               0.5*(abs(self.U_u3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X] + \
+                                               0.5*(abs(self.U_t3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X]
+
+            transformed_spectra[Flavor.NU_X_BAR] = 0.5*(abs(self.U_u3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E_BAR] + \
+                                                   0.5*(abs(self.U_t3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E_BAR] + \
+                                                   0.5*(abs(self.U_u1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X_BAR] + \
+                                                   0.5*(abs(self.U_t1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X_BAR] + \
+                                                   0.5*(abs(self.U_u2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] + \
+                                                   0.5*(abs(self.U_t2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR]
+
+
+        return transformed_spectra
+
+
+    def get_flux_project(self, t, E, distance, neutrino_masses, mass_hierachy):
+        """Get neutrino flux through 1cm^2 surface at the given distance
+
+        Parameters
+        ----------
+        t : astropy.Quantity
+            Time to evaluate the neutrino spectra.
+        E : astropy.Quantity or ndarray of astropy.Quantity
+            Energies to evaluate the the neutrino spectra.
+        distance : astropy.Quantity or float (in kpc)
+            Distance from supernova.
+        flavor_xform : FlavorTransformation
+            An instance from the flavor_transformation module.
+
+        Returns
+        -------
+        dict
+            Dictionary of neutrino fluxes in [neutrinos/(cm^2*erg*s)],
+            keyed by neutrino flavor.
+
+        """
+        distance = distance << u.kpc #assume that provided distance is in kpc, or convert
+        factor = 1/(4*np.pi*(distance.to('cm'))**2)
+        f = self.get_transformed_spectra_project(t, E, distance, neutrino_masses, mass_hierachy)
+
+        array = np.stack([f[flv] for flv in sorted(Flavor)])
+        return  Flux(data=array*factor, flavor=np.sort(Flavor), time=t, energy=E)
 
 
     def get_oscillatedspectra(self, *args):
@@ -215,7 +397,7 @@ def get_value(x):
     Returns
     -------
     value : float or ndarray
-    
+
     :meta private:
     """
     if type(x) == Quantity:
@@ -229,7 +411,7 @@ class PinchedModel(SupernovaModel):
 
         Parameters
         ----------
-        simtab: astropy.Table 
+        simtab: astropy.Table
             Should contain columns TIME, {L,E,ALPHA}_NU_{E,E_BAR,X,X_BAR}
             The values for X_BAR may be missing, then NU_X data will be used
         metadata: dict
@@ -281,6 +463,7 @@ class PinchedModel(SupernovaModel):
 
         # Avoid division by zero in energy PDF below.
         E[E==0] = np.finfo(float).eps * E.unit
+        #print("KKB",np.finfo(float).eps * E.unit,E[0])
 
         # Estimate L(t), <E_nu(t)> and alpha(t). Express all energies in erg.
         E = E.to_value('erg')
