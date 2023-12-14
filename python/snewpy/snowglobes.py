@@ -142,7 +142,7 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
     flavor_transformation = flavor_transformation_dict[transformation_type]
 
     model_dir, model_file = os.path.split(os.path.abspath(model_path))
-    print("Yves",**snmodel_dict)
+    #print("Yves",**snmodel_dict)
     snmodel = model_class(model_path, **snmodel_dict)
 
     #set the timings up

@@ -164,6 +164,10 @@ class SupernovaModel(ABC):
             flavor_xform.prob_xebar(t, E) * initialspectra[Flavor.NU_E_BAR] + \
             flavor_xform.prob_xxbar(t, E) * initialspectra[Flavor.NU_X_BAR]
 
+
+        #print(transformed_spectra[Flavor.NU_E])
+        #print(transformed_spectra[Flavor.NU_E_BAR])
+
         return transformed_spectra
 
     def get_flux (self, t, E, distance, flavor_xform=NoTransformation()):
@@ -257,7 +261,7 @@ class SupernovaModel(ABC):
         # \nu_e row
         self.U_e1=c_13*c_12
         self.U_e2=c_13*s_12
-        self.U_e3=s_13*s_12*e_mdeltaCP
+        self.U_e3=s_13*e_mdeltaCP
 
         # \nu_\mu row
         self.U_u1 = -c_23*s_12-s_23*s_13*c_12*e_deltaCP
@@ -310,6 +314,11 @@ class SupernovaModel(ABC):
                                                    (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] + \
                                                    (abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X_BAR]
 
+            # transformed_spectra[Flavor.NU_E_BAR] = (abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_E_BAR] + \
+            #                                        (1-abs(self.U_e1)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] #+ \
+            #                                     #(abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X_BAR]
+
+
 
             transformed_spectra[Flavor.NU_X] = 0.5*(abs(self.U_u3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E] + \
                                                0.5*(abs(self.U_t3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E] + \
@@ -351,6 +360,15 @@ class SupernovaModel(ABC):
                                                    0.5*(abs(self.U_u2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] + \
                                                    0.5*(abs(self.U_t2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR]
 
+
+        # b=(1-(abs(self.U_e3)**2))*initialspectra_shited_by_delta_t1[Flavor.NU_X]
+        # k=(abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X]
+        #
+        # #print("b",b)
+        # #print("k",k)
+        #
+        # print(1-(abs(self.U_e1)**2), abs(self.U_e2)**2+abs(self.U_e3)**2+abs(self.U_e1)**2)
+        #
 
         return transformed_spectra
 
