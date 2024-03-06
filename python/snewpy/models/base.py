@@ -222,7 +222,7 @@ class SupernovaModel(ABC):
         dict
             Dictionary of transformed spectra, keyed by neutrino flavor.
         """
-        print("This is what I'm using")
+        #print("This is what I'm using")
 
         if mass_hierachy == "NO":
             theta12 = 33.44<< u.deg
@@ -361,14 +361,7 @@ class SupernovaModel(ABC):
                                                    0.5*(abs(self.U_t2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR]
 
 
-        # b=(1-(abs(self.U_e3)**2))*initialspectra_shited_by_delta_t1[Flavor.NU_X]
-        # k=(abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_X] + (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X]
-        #
-        # #print("b",b)
-        # #print("k",k)
-        #
-        # print(1-(abs(self.U_e1)**2), abs(self.U_e2)**2+abs(self.U_e3)**2+abs(self.U_e1)**2)
-        #
+        #print("Deltat1", t-delta_t1,np.finfo(float).eps)
 
         return transformed_spectra
 
@@ -499,6 +492,7 @@ class PinchedModel(SupernovaModel):
         # Make sure input time uses the same units as the model time grid, or
         # the interpolation will not work correctly.
         t = t.to(self.time.unit)
+        #print("TIME", t)
 
         for flavor in flavors:
             # Use np.interp rather than scipy.interpolate.interp1d because it

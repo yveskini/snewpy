@@ -238,6 +238,7 @@ def simulate(SNOwGLoBESdir, tarball_path, detector_input="all", verbose=False, *
         some_rate = list(rates_smeared.values())[0]
         tbins = center(some_rate.time)
         ebins = center(some_rate.energy)
+        #print("Yves Yves", tbins[1]-tbins[0],tbins[2]-tbins[1], ebins)
         result[det] = {}
         for n_bin, t_bin in enumerate(tbins):
             data = {**{(chan,'unsmeared','weighted'): rate.array[0,n_bin,:]
