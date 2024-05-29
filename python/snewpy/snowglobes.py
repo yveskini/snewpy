@@ -170,6 +170,18 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
     if neutrino_masses ==None:
         flux = snmodel.get_flux(t=snmodel.get_time(), E=energy,  distance=d, flavor_xform=flavor_transformation)
 
+    elif mass_hierachy=="arbitrary":
+
+        # else, take the new get_flux that we added
+        flux = snmodel.get_flux_project_arbitrary_masses(t=snmodel.get_time(),
+                                        E=energy,
+                                        distance=d,
+                                        neutrino_masses=neutrino_masses,
+                                        #mass_hierachy=mass_hierachy
+                                        )
+
+
+
     else:
         # else, take the new get_flux that we added
         flux = snmodel.get_flux_project(t=snmodel.get_time(),

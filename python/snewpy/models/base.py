@@ -5,6 +5,8 @@ from warnings import warn
 
 import numpy as np
 from astropy import units as u
+from scipy.stats import norm
+
 from astropy.table import Table, join
 from astropy.units import UnitTypeError, get_physical_type
 from astropy.units.quantity import Quantity
@@ -197,6 +199,194 @@ class SupernovaModel(ABC):
 
         array = np.stack([f[flv] for flv in sorted(Flavor)])
         return  Flux(data=array*factor, flavor=np.sort(Flavor), time=t, energy=E)
+
+
+
+    def U_PMNS(self,theta12, theta13, theta23, deltaCP):
+        """
+        Compute the PMNS matrix given the mixing angles (theta12, theta13, theta23)
+        and the CP-violating phase deltaCP.
+
+        Parameters:
+        theta12 : float
+            Mixing angle θ12 in degrees.
+        theta13 : float
+            Mixing angle θ13 in degrees.
+        theta23 : float
+            Mixing angle θ23 in degrees.
+        deltaCP : float
+            CP-violating phase δCP in degrees.
+
+        Returns:
+        numpy.ndarray
+            A 3x3  numpy array representing the norm of the PMNS matrix elements.
+        """
+
+        # Convert angles from degrees to radians
+        theta12_rad = np.radians(theta12)
+        theta13_rad = np.radians(theta13)
+        theta23_rad = np.radians(theta23)
+        deltaCP_rad = np.radians(deltaCP)
+
+        # Precompute trigonometric functions
+        c_12 = np.cos(theta12_rad)
+        s_12 = np.sin(theta12_rad)
+        c_13 = np.cos(theta13_rad)
+        s_13 = np.sin(theta13_rad)
+        c_23 = np.cos(theta23_rad)
+        s_23 = np.sin(theta23_rad)
+
+        # Compute complex exponentials
+        e_mdeltaCP = np.exp(-1j * deltaCP_rad)
+        e_deltaCP = np.exp(1j * deltaCP_rad)
+
+        # Compute PMNS matrix elements
+        # ν_e row
+        U_e1 = c_13 * c_12
+        U_e2 = c_13 * s_12
+        U_e3 = s_13 * e_mdeltaCP
+
+        # ν_μ row
+        U_mu1 = -c_23 * s_12 - s_23 * s_13 * c_12 * e_deltaCP
+        U_mu2 = c_23 * c_12 - s_23 * s_13 * s_12 * e_deltaCP
+        U_mu3 = s_23 * c_13
+
+        # ν_τ row
+        U_t1 = s_23 * s_12 - c_23 * s_13 * c_12 * e_deltaCP
+        U_t2 = -s_23 * c_12 - c_23 * s_13 * s_12 * e_deltaCP
+        U_t3 = c_23 * c_13
+
+        # Create the PMNS matrix
+        matrix = np.array([
+            [abs(U_e1)**2,  abs(U_e2)**2,  abs(U_e3)**2],
+            [abs(U_mu1)**2, abs(U_mu2)**2, abs(U_mu3)**2],
+            [abs(U_t1)**2,  abs(U_t2)**2,  abs(U_t3)**2]])
+
+        #     matrix = np.array([
+        #         [U_e1 , U_e2,  U_e3],
+        #         [U_mu1, U_mu2, U_mu3],
+        #         [U_t1,  U_t2,  U_t3]])
+
+
+
+
+        return matrix
+
+
+
+    def get_transformed_spectra_project_arbitrary_masses(self, t, E, distance, neutrino_masses):
+            """Get neutrino spectra after applying oscillation.
+
+            This method handle arbitrary masses ordering.
+
+            See paper or Appendix of paper [insert ArXiv link]
+
+            \Phi_{\nu_{e}}(E, t)       =\left|U_{e H}\right|^{2}\Phi_{\nu_{e}}^{0}(E, t) + \left(\left|U_{e L}\right|^{2}+\left|U_{e M}\right|^{2}\right) \Phi_{\nu_{x}}^{0}(E, t)
+            \Phi_{\bar{\nu}_{e}}(E, t) =\left|U_{e L}\right|^{2}\Phi_{\bar{\nu}_{e}}^{0}(E, t) + \left(\left|U_{e M}\right|^{2}+\left|U_{e H}\right|^{2}\right) \Phi_{\bar{\nu}_{x}}^{0}(E, t)
+            2\Phi_{\nu_{x}}(E, t)      =\left(\left|U_{\mu H}\right|^{2}+\left|U_{\tau H}\right|^{2}\right)\Phi_{\nu_{e}}^{0}(E, t)+\left(\left|U_{\mu L}\right|^{2}+\left|U_{\tau L}\right|^{2}+\left|U_{\mu M}\right|^{2}+\left|U_{\tau M}\right|^{2}\right) \Phi_{\nu_{x}}^{0}(E, t)
+            2\Phi_{\bar{\nu}_{x}}(E, t)=\left(\left|U_{\mu L}\right|^{2}+\left|U_{\tau L}\right|^{2}\right)\Phi_{\bar{\nu}_{e}}^{0}(E, t)+\left(\left|U_{\mu M}\right|^{2}+\left|U_{\tau M}\right|^{2}+\left|U_{\mu H}\right|^{2}+\left|U_{\tau H}\right|^{2}\right) \Phi_{\bar{\nu}_{x}}^{0}(E, t)
+
+
+            Parameters
+            ----------
+            t : astropy.Quantity
+                Time to evaluate initial and oscillated spectra.
+            E : astropy.Quantity or ndarray of astropy.Quantity
+                Energies to evaluate the initial and oscillated spectra.
+
+            distance : float
+                distance to the supernova assumed to be in kpc
+
+            neutrino_masses: None or List
+                Neutrino masses list [m1,m2,m3]. If None, then used the default SNEWPY
+            mass_hierachy: str
+                mass_hierachy="NO" for Normal ordering or "IO" for INVERTED ordering
+            snmodel_dict : dict
+
+            Returns
+            -------
+            dict
+                Dictionary of transformed spectra, keyed by neutrino flavor.
+            """
+
+
+
+            ####################### Computing time delay effect first ###################
+
+            distance = distance << u.kpc   # Assume distance is in Kpc
+            distance = distance.to('m')    # Convert distance to  m
+
+            # Computing time delay dela_ts
+            neutrino_masses = neutrino_masses  << u.eV   # Assume the masses are given in eV
+            neutrino_masses = neutrino_masses.to("MeV")  # Converting to MeV
+
+            # Creating a new energy grid to have the same shape as the time 't'
+            # Going to use the same bounds as the default energy # -*- coding: utf-8 -*-
+
+            energy=np.linspace(E[0], E[-1], t.shape[0])
+
+            # Avoid division by zero, I'm taking the smallest floating point of numpy
+            energy[energy==0] = np.finfo(float).eps * E.unit
+
+            m1=neutrino_masses[0]
+            m2=neutrino_masses[1]
+            m3=neutrino_masses[2]
+
+            delta_t1=0.5*(distance/aconst.c)*(m1/energy)**2
+            delta_t2=0.5*(distance/aconst.c)*(m2/energy)**2
+            delta_t3=0.5*(distance/aconst.c)*(m3/energy)**2
+
+            # # Compute initial flux with time delays
+            # initialspectra_shited_by_delta_t1 = self.get_initial_spectra(t-delta_t1, E)
+            # initialspectra_shited_by_delta_t2 = self.get_initial_spectra(t-delta_t2, E)
+            # initialspectra_shited_by_delta_t3 = self.get_initial_spectra(t-delta_t3, E)
+
+            # Compute initial flux with time delays
+            shifts={}
+            shifts[0]=self.get_initial_spectra(t-delta_t1, E)
+            shifts[1]=self.get_initial_spectra(t-delta_t2, E)
+            shifts[2]=self.get_initial_spectra(t-delta_t3, E)
+
+
+            #### Getting the elements squared, using the normal ordering values
+            U=self.U_PMNS(theta12=33.44, theta13=8.57, theta23=49.20, deltaCP=197)
+
+            # Add plus one for in the indices to match U_PMNS notation
+            sorted_indices =np.argsort(neutrino_masses)
+
+
+            L,M,H=sorted_indices[0],sorted_indices[1],sorted_indices[2]
+            transformed_spectra = {}
+
+            transformed_spectra[Flavor.NU_E] =      U[0,H]*shifts[H][Flavor.NU_E] + \
+                                                    U[0,L]*shifts[L][Flavor.NU_X] + \
+                                                    U[0,M]*shifts[M][Flavor.NU_X]
+
+            transformed_spectra[Flavor.NU_E_BAR] =  U[0,L]*shifts[L][Flavor.NU_E_BAR] + \
+                                                    U[0,M]*shifts[M][Flavor.NU_X_BAR] + \
+                                                    U[0,H]*shifts[H][Flavor.NU_X_BAR]
+
+            transformed_spectra[Flavor.NU_X]  =0.5*(U[1,H]*shifts[H][Flavor.NU_E] + \
+                                                    U[2,H]*shifts[H][Flavor.NU_E] + \
+                                                    U[1,L]*shifts[L][Flavor.NU_X] + \
+                                                    U[2,L]*shifts[L][Flavor.NU_X] + \
+                                                    U[1,M]*shifts[M][Flavor.NU_X] + \
+                                                    U[2,M]*shifts[M][Flavor.NU_X])
+
+
+            transformed_spectra[Flavor.NU_X_BAR]=0.5*(U[1,L]*shifts[L][Flavor.NU_E_BAR] + \
+                                                    U[2,L]*shifts[L][Flavor.NU_E_BAR] + \
+                                                    U[1,M]*shifts[M][Flavor.NU_X_BAR] + \
+                                                    U[2,M]*shifts[M][Flavor.NU_X_BAR] + \
+                                                    U[1,H]*shifts[H][Flavor.NU_X_BAR] + \
+                                                    U[2,H]*shifts[H][Flavor.NU_X_BAR])
+
+
+
+
+            return transformed_spectra
+
+
 
     def get_transformed_spectra_project(self, t, E, distance, neutrino_masses, mass_hierachy):
         """Get neutrino spectra after applying oscillation.
@@ -398,6 +588,36 @@ class SupernovaModel(ABC):
         return  Flux(data=array*factor, flavor=np.sort(Flavor), time=t, energy=E)
 
 
+    def get_flux_project_arbitrary_masses(self, t, E, distance, neutrino_masses):
+        """Get neutrino flux through 1cm^2 surface at the given distance
+
+        Parameters
+        ----------
+        t : astropy.Quantity
+            Time to evaluate the neutrino spectra.
+        E : astropy.Quantity or ndarray of astropy.Quantity
+            Energies to evaluate the the neutrino spectra.
+        distance : astropy.Quantity or float (in kpc)
+            Distance from supernova.
+        neutrino_masses: None or List
+            Neutrino masses list [m1,m2,m3]. If None, then used the default SNEWPY
+
+        Returns
+        -------
+        dict
+            Dictionary of neutrino fluxes in [neutrinos/(cm^2*erg*s)],
+            keyed by neutrino flavor.
+
+        """
+        distance = distance << u.kpc #assume that provided distance is in kpc, or convert
+        factor = 1/(4*np.pi*(distance.to('cm'))**2)
+        f = self.get_transformed_spectra_project_arbitrary_masses(t, E, distance, neutrino_masses)
+
+        array = np.stack([f[flv] for flv in sorted(Flavor)])
+        return  Flux(data=array*factor, flavor=np.sort(Flavor), time=t, energy=E)
+
+
+
     def get_oscillatedspectra(self, *args):
         """DO NOT USE! Only for backward compatibility!
 
@@ -427,7 +647,7 @@ def get_value(x):
 
 class PinchedModel(SupernovaModel):
     """Subclass that contains spectra/luminosity pinches"""
-    def __init__(self, simtab, metadata):
+    def __init__(self, simtab, metadata, QCD_effect_time=1.23):
         """ Initialize the PinchedModel using the data from the given table.
 
         Parameters
@@ -445,13 +665,37 @@ class PinchedModel(SupernovaModel):
                 simtab[f'{val}_NU_X_BAR'] = simtab[f'{val}_NU_X']
         # Get grid of model times.
         time = simtab['TIME'] << u.s
+        # Get where to insert QCD effects
+        index= np.where(time.value>=QCD_effect_time)[0][0]
+
+
         # Set up dictionary of luminosity, mean energy and shape parameter
         # alpha, keyed by neutrino flavor (NU_E, NU_X, NU_E_BAR, NU_X_BAR).
         self.luminosity = {}
         self.meanE = {}
         self.pinch = {}
-        for f in Flavor:
-            self.luminosity[f] = simtab[f'L_{f.name}'] << u.erg/u.s
+
+        # This values are computed looking at FIG.1 of https://arxiv.org/pdf/2208.14469
+        high_scaling={}
+        high_scaling["0"]=0.32 #Flavor.NU_E
+        high_scaling["1"]=0.9  #Flavor.NU_X
+        high_scaling["2"]=1.16 #Flavor.NU_E_BAR
+        high_scaling["3"]=0.9  #Flavor.NU_X_BAR
+
+        for i, f in enumerate(Flavor):
+            self.luminosity[f] = simtab[f'L_{f.name}']# << u.erg/u.s
+
+            if i==0:
+                normalization = np.max(self.luminosity[f])
+            mu = time.value[index-1]  # Mean
+            sigma = .0005  # Standard deviation
+            height = high_scaling[f"{f}"]*normalization # Maximum heigh
+
+            # Calculate the Gaussian distribution
+            # Carefull, this is working fine for the Bollig model, for other model, might need to adjust due to time re
+            gaussian = height*norm.pdf(time.value, mu, sigma)/np.max(norm.pdf(time.value, mu, sigma))
+            self.luminosity[f] +=gaussian
+            self.luminosity[f] =self.luminosity[f] << u.erg/u.s
             self.meanE[f] = simtab[f'E_{f.name}'] << u.MeV
             self.pinch[f] = simtab[f'ALPHA_{f.name}']
         super().__init__(time, metadata)
