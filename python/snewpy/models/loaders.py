@@ -27,7 +27,7 @@ from snewpy.neutrino import Flavor
 from snewpy import _model_downloader
 
 class Nakazato_2013(PinchedModel):
-    def __init__(self, filename, metadata={}):
+    def __init__(self, filename, QCD_effect_time, metadata={}):
         """Model initialization.
 
         Parameters
@@ -46,7 +46,7 @@ class Nakazato_2013(PinchedModel):
         simtab = Table.read(datafile)
 
         self.filename = os.path.basename(filename)
-        super().__init__(simtab, metadata)
+        super().__init__(simtab, QCD_effect_time, metadata)
 
 
 class Sukhbold_2015(Nakazato_2013):
@@ -105,7 +105,7 @@ class OConnor_2015(PinchedModel):
     """Model based on the black hole formation simulation in `O'Connor (2015) <https://arxiv.org/abs/1411.7058>`_.
     """
 
-    def __init__(self, filename, metadata={}):
+    def __init__(self, filename,QCD_effect_time, metadata={}):
         """
         Parameters
         ----------
@@ -141,7 +141,7 @@ class OConnor_2015(PinchedModel):
 
         self.filename = os.path.basename(filename)
 
-        super().__init__(simtab, metadata)
+        super().__init__(simtab,QCD_effect_time, metadata)
 
 
 class Zha_2021(OConnor_2015):
@@ -149,7 +149,7 @@ class Zha_2021(OConnor_2015):
 
 
 class Warren_2020(PinchedModel):
-    def __init__(self, filename, metadata={}):
+    def __init__(self, filename,QCD_effect_time, metadata={}):
         """
         Parameters
         ----------
@@ -191,11 +191,11 @@ class Warren_2020(PinchedModel):
         # Set model metadata.
         self.filename = os.path.basename(filename)
 
-        super().__init__(simtab, metadata)
+        super().__init__(simtab,QCD_effect_time, metadata)
 
 
 class Kuroda_2020(PinchedModel):
-    def __init__(self, filename, metadata={}):
+    def __init__(self, filename,QCD_effect_time, metadata={}):
         """
         Parameters
         ----------
@@ -219,11 +219,11 @@ class Kuroda_2020(PinchedModel):
 
         self.filename = os.path.basename(filename)
 
-        super().__init__(simtab, metadata)
+        super().__init__(simtab,QCD_effect_time, metadata)
 
 
 class Fornax_2019(SupernovaModel):
-    def __init__(self, filename, metadata={}, cache_flux=False):
+    def __init__(self, filename,QCD_effect_time, metadata={}, cache_flux=False):
         """
         Parameters
         ----------
@@ -590,7 +590,7 @@ class Fornax_2019(SupernovaModel):
 
 
 class Fornax_2021(SupernovaModel):
-    def __init__(self, filename, metadata={}):
+    def __init__(self, filename, QCD_effect_time, metadata={}):
         """
         Parameters
         ----------
@@ -705,7 +705,7 @@ class Fornax_2021(SupernovaModel):
 
 
 class Fornax_2022(Fornax_2021):
-    def __init__(self, filename, metadata={}):
+    def __init__(self, filename, QCD_effect_time, metadata={}):
         """
         Parameters
         ----------

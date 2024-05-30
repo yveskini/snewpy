@@ -100,7 +100,7 @@ def generate_time_series(model_path, model_type, transformation_type, d, output_
     fluence.save(tfname)
     return tfname
 
-def generate_fluence(model_path, model_type, transformation_type, d, output_filename=None, tstart=None, tend=None, neutrino_masses=None,mass_hierachy="NO",snmodel_dict={}):
+def generate_fluence(model_path, model_type, transformation_type, d, output_filename=None, tstart=None, tend=None, neutrino_masses=None,mass_hierachy="NO",QCD_effect_time=-1,snmodel_dict={}):
     """Generate fluence files in SNOwGLoBES format.
 
     This version will subsample the times in a supernova model, produce energy
@@ -142,8 +142,7 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
     flavor_transformation = flavor_transformation_dict[transformation_type]
 
     model_dir, model_file = os.path.split(os.path.abspath(model_path))
-    #print("Yves",**snmodel_dict)
-    snmodel = model_class(model_path, **snmodel_dict)
+    snmodel = model_class(filename=model_path, QCD_effect_time=QCD_effect_time, **snmodel_dict)
 
     #set the timings up
     #default if inputs are None: full time window of the model

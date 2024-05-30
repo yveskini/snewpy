@@ -15,10 +15,12 @@ from scipy.special import loggamma
 from snewpy import _model_downloader
 
 from snewpy.neutrino import Flavor
+from snewpy.neutrino import PreComputingU_PMNSElementSquared
 from snewpy.flavor_transformation import NoTransformation
 from functools import wraps
-
 from snewpy.flux import Flux
+
+PrecomputingU_PMNSelementsquared=PreComputingU_PMNSElementSquared()
 
 def _wrap_init(init, check):
     @wraps(init)
@@ -36,7 +38,7 @@ class SupernovaModel(ABC):
         super().__init_subclass__(**kwargs)
         cls.__init__ = _wrap_init(cls.__init__, cls.__post_init_check)
 
-    def __init__(self, time, metadata):
+    def __init__(self, time, QCD_effect_time, metadata):
         """Initialize supernova model base class
         (call this method in the subclass constructor as ``super().__init__(time,metadata)``).
 
@@ -202,78 +204,6 @@ class SupernovaModel(ABC):
 
 
 
-    def U_PMNS(self,theta12, theta13, theta23, deltaCP):
-        """
-        Compute the PMNS matrix given the mixing angles (theta12, theta13, theta23)
-        and the CP-violating phase deltaCP.
-
-        Parameters:
-        theta12 : float
-            Mixing angle θ12 in degrees.
-        theta13 : float
-            Mixing angle θ13 in degrees.
-        theta23 : float
-            Mixing angle θ23 in degrees.
-        deltaCP : float
-            CP-violating phase δCP in degrees.
-
-        Returns:
-        numpy.ndarray
-            A 3x3  numpy array representing the norm of the PMNS matrix elements.
-        """
-
-        # Convert angles from degrees to radians
-        theta12_rad = np.radians(theta12)
-        theta13_rad = np.radians(theta13)
-        theta23_rad = np.radians(theta23)
-        deltaCP_rad = np.radians(deltaCP)
-
-        # Precompute trigonometric functions
-        c_12 = np.cos(theta12_rad)
-        s_12 = np.sin(theta12_rad)
-        c_13 = np.cos(theta13_rad)
-        s_13 = np.sin(theta13_rad)
-        c_23 = np.cos(theta23_rad)
-        s_23 = np.sin(theta23_rad)
-
-        # Compute complex exponentials
-        e_mdeltaCP = np.exp(-1j * deltaCP_rad)
-        e_deltaCP = np.exp(1j * deltaCP_rad)
-
-        # Compute PMNS matrix elements
-        # ν_e row
-        U_e1 = c_13 * c_12
-        U_e2 = c_13 * s_12
-        U_e3 = s_13 * e_mdeltaCP
-
-        # ν_μ row
-        U_mu1 = -c_23 * s_12 - s_23 * s_13 * c_12 * e_deltaCP
-        U_mu2 = c_23 * c_12 - s_23 * s_13 * s_12 * e_deltaCP
-        U_mu3 = s_23 * c_13
-
-        # ν_τ row
-        U_t1 = s_23 * s_12 - c_23 * s_13 * c_12 * e_deltaCP
-        U_t2 = -s_23 * c_12 - c_23 * s_13 * s_12 * e_deltaCP
-        U_t3 = c_23 * c_13
-
-        # Create the PMNS matrix
-        matrix = np.array([
-            [abs(U_e1)**2,  abs(U_e2)**2,  abs(U_e3)**2],
-            [abs(U_mu1)**2, abs(U_mu2)**2, abs(U_mu3)**2],
-            [abs(U_t1)**2,  abs(U_t2)**2,  abs(U_t3)**2]])
-
-        #     matrix = np.array([
-        #         [U_e1 , U_e2,  U_e3],
-        #         [U_mu1, U_mu2, U_mu3],
-        #         [U_t1,  U_t2,  U_t3]])
-
-
-
-
-        return matrix
-
-
-
     def get_transformed_spectra_project_arbitrary_masses(self, t, E, distance, neutrino_masses):
             """Get neutrino spectra after applying oscillation.
 
@@ -336,11 +266,6 @@ class SupernovaModel(ABC):
             delta_t2=0.5*(distance/aconst.c)*(m2/energy)**2
             delta_t3=0.5*(distance/aconst.c)*(m3/energy)**2
 
-            # # Compute initial flux with time delays
-            # initialspectra_shited_by_delta_t1 = self.get_initial_spectra(t-delta_t1, E)
-            # initialspectra_shited_by_delta_t2 = self.get_initial_spectra(t-delta_t2, E)
-            # initialspectra_shited_by_delta_t3 = self.get_initial_spectra(t-delta_t3, E)
-
             # Compute initial flux with time delays
             shifts={}
             shifts[0]=self.get_initial_spectra(t-delta_t1, E)
@@ -348,9 +273,7 @@ class SupernovaModel(ABC):
             shifts[2]=self.get_initial_spectra(t-delta_t3, E)
 
 
-            #### Getting the elements squared, using the normal ordering values
-            U=self.U_PMNS(theta12=33.44, theta13=8.57, theta23=49.20, deltaCP=197)
-
+            U=PrecomputingU_PMNSelementsquared
             # Add plus one for in the indices to match U_PMNS notation
             sorted_indices =np.argsort(neutrino_masses)
 
@@ -504,10 +427,6 @@ class SupernovaModel(ABC):
                                                    (abs(self.U_e2)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] + \
                                                    (abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X_BAR]
 
-            # transformed_spectra[Flavor.NU_E_BAR] = (abs(self.U_e1)**2)*initialspectra_shited_by_delta_t1[Flavor.NU_E_BAR] + \
-            #                                        (1-abs(self.U_e1)**2)*initialspectra_shited_by_delta_t2[Flavor.NU_X_BAR] #+ \
-            #                                     #(abs(self.U_e3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_X_BAR]
-
 
 
             transformed_spectra[Flavor.NU_X] = 0.5*(abs(self.U_u3)**2)*initialspectra_shited_by_delta_t3[Flavor.NU_E] + \
@@ -646,59 +565,72 @@ def get_value(x):
     return x
 
 class PinchedModel(SupernovaModel):
-    """Subclass that contains spectra/luminosity pinches"""
-    def __init__(self, simtab, metadata, QCD_effect_time=1.23):
-        """ Initialize the PinchedModel using the data from the given table.
+    """Subclass that contains spectra/luminosity pinches for supernova models."""
+
+    def __init__(self, simtab, QCD_effect_time, metadata):
+        """
+        Initialize the PinchedModel using the data from the given table.
 
         Parameters
         ----------
         simtab: astropy.Table
-            Should contain columns TIME, {L,E,ALPHA}_NU_{E,E_BAR,X,X_BAR}
-            The values for X_BAR may be missing, then NU_X data will be used
+            Should contain columns TIME, {L,E,ALPHA}_NU_{E,E_BAR,X,X_BAR}.
+            The values for X_BAR may be missing, in which case NU_X data will be used.
+        QCD_effect_time: float
+            Time after which QCD effects are considered, in seconds.
         metadata: dict
-            Model parameters dict
+            Dictionary containing model parameters.
         """
-        if not 'L_NU_X_BAR' in simtab.colnames:
-            # table only contains NU_E, NU_E_BAR, and NU_X, so double up
-            # the use of NU_X for NU_X_BAR.
-            for val in ['L','E','ALPHA']:
+
+        # Check and duplicate NU_X data if NU_X_BAR data is missing
+        if 'L_NU_X_BAR' not in simtab.colnames:
+            for val in ['L', 'E', 'ALPHA']:
                 simtab[f'{val}_NU_X_BAR'] = simtab[f'{val}_NU_X']
-        # Get grid of model times.
+
+        # Get grid of model times
         time = simtab['TIME'] << u.s
-        # Get where to insert QCD effects
-        index= np.where(time.value>=QCD_effect_time)[0][0]
 
 
-        # Set up dictionary of luminosity, mean energy and shape parameter
-        # alpha, keyed by neutrino flavor (NU_E, NU_X, NU_E_BAR, NU_X_BAR).
+        # Initialize dictionaries for luminosity, mean energy, and pinch parameter
         self.luminosity = {}
         self.meanE = {}
         self.pinch = {}
 
-        # This values are computed looking at FIG.1 of https://arxiv.org/pdf/2208.14469
-        high_scaling={}
-        high_scaling["0"]=0.32 #Flavor.NU_E
-        high_scaling["1"]=0.9  #Flavor.NU_X
-        high_scaling["2"]=1.16 #Flavor.NU_E_BAR
-        high_scaling["3"]=0.9  #Flavor.NU_X_BAR
+        # High scaling values computed from FIG.1 of https://arxiv.org/pdf/2208.14469
+        high_scaling = {}
 
+        # Determine whether to add QCD effects
+        if QCD_effect_time <= 0.:
+            high_scaling = {"0": 0.0, "1": 0.0, "2": 0.0, "3": 0.0}
+            index=0 # It does not actually matter
+            #print("Here")
+        else:
+            #print("There")
+            # Get the index where to insert QCD effects
+            index = np.where(time >= QCD_effect_time.to(u.s))[0][0]
+            high_scaling = {"0": 0.32, "1": 0.9, "2": 1.16, "3": 0.9}
+
+        # Iterate through each flavor and set the corresponding properties
         for i, f in enumerate(Flavor):
-            self.luminosity[f] = simtab[f'L_{f.name}']# << u.erg/u.s
-
-            if i==0:
+            self.luminosity[f] = simtab[f'L_{f.name}']# << u.erg / u.s
+            if i == 0:
                 normalization = np.max(self.luminosity[f])
-            mu = time.value[index-1]  # Mean
-            sigma = .0005  # Standard deviation
-            height = high_scaling[f"{f}"]*normalization # Maximum heigh
+            mu = time.value[index]  # Mean
+            sigma = 0.0005  # Standard deviation
+            height = high_scaling[str(i)] * normalization  # Maximum height
 
             # Calculate the Gaussian distribution
-            # Carefull, this is working fine for the Bollig model, for other model, might need to adjust due to time re
-            gaussian = height*norm.pdf(time.value, mu, sigma)/np.max(norm.pdf(time.value, mu, sigma))
-            self.luminosity[f] +=gaussian
+            gaussian = height * norm.pdf(time.value, mu, sigma) / np.max(norm.pdf(time.value, mu, sigma))
+
+            # Apply Gaussian scaling to luminosity (commented out for specific models)
+            self.luminosity[f] += gaussian
             self.luminosity[f] =self.luminosity[f] << u.erg/u.s
             self.meanE[f] = simtab[f'E_{f.name}'] << u.MeV
             self.pinch[f] = simtab[f'ALPHA_{f.name}']
-        super().__init__(time, metadata)
+
+        # Initialize the superclass with the time, QCD_effect_time, and metadata
+        super().__init__(time, QCD_effect_time, metadata)
+
 
 
     def get_initial_spectra(self, t, E, flavors=Flavor):
@@ -764,7 +696,7 @@ class PinchedModel(SupernovaModel):
 class _GarchingArchiveModel(PinchedModel):
     """Subclass that reads models in the format used in the
     `Garching Supernova Archive <https://wwwmpa.mpa-garching.mpg.de/ccsnarchive/>`_."""
-    def __init__(self, filename, eos='LS220', metadata={}):
+    def __init__(self, filename, QCD_effect_time, eos='LS220', metadata={}):
         """Model Initialization.
 
         Parameters
@@ -823,7 +755,7 @@ class _GarchingArchiveModel(PinchedModel):
                 mergtab[_ename].fill_value = 0.
                 mergtab[_aname].fill_value = 0.
         simtab = mergtab.filled()
-        super().__init__(simtab, metadata)
+        super().__init__(simtab,QCD_effect_time, metadata)
 
 
 class _RegistryModel(ABC):

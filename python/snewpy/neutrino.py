@@ -242,3 +242,85 @@ parameter_presets = {
 
 def MixingParameters(mh:MassHierarchy=MassHierarchy.NORMAL, version:str='NuFIT5.0'):
     return parameter_presets[version][mh]
+
+
+
+
+def U_PMNS(theta12, theta13, theta23, deltaCP):
+        """
+        Compute the PMNS matrix given the mixing angles (theta12, theta13, theta23)
+        and the CP-violating phase deltaCP.
+
+        Parameters:
+        theta12 : float
+            Mixing angle θ12 in degrees.
+        theta13 : float
+            Mixing angle θ13 in degrees.
+        theta23 : float
+            Mixing angle θ23 in degrees.
+        deltaCP : float
+            CP-violating phase δCP in degrees.
+
+        Returns:
+        numpy.ndarray
+            A 3x3  numpy array representing the norm of the PMNS matrix elements.
+        """
+
+        # Convert angles from degrees to radians
+        theta12_rad = np.radians(theta12)
+        theta13_rad = np.radians(theta13)
+        theta23_rad = np.radians(theta23)
+        deltaCP_rad = np.radians(deltaCP)
+
+        # Precompute trigonometric functions
+        c_12 = np.cos(theta12_rad)
+        s_12 = np.sin(theta12_rad)
+        c_13 = np.cos(theta13_rad)
+        s_13 = np.sin(theta13_rad)
+        c_23 = np.cos(theta23_rad)
+        s_23 = np.sin(theta23_rad)
+
+        # Compute complex exponentials
+        e_mdeltaCP = np.exp(-1j * deltaCP_rad)
+        e_deltaCP = np.exp(1j * deltaCP_rad)
+
+        # Compute PMNS matrix elements
+        # ν_e row
+        U_e1 = c_13 * c_12
+        U_e2 = c_13 * s_12
+        U_e3 = s_13 * e_mdeltaCP
+
+        # ν_μ row
+        U_mu1 = -c_23 * s_12 - s_23 * s_13 * c_12 * e_deltaCP
+        U_mu2 = c_23 * c_12 - s_23 * s_13 * s_12 * e_deltaCP
+        U_mu3 = s_23 * c_13
+
+        # ν_τ row
+        U_t1 = s_23 * s_12 - c_23 * s_13 * c_12 * e_deltaCP
+        U_t2 = -s_23 * c_12 - c_23 * s_13 * s_12 * e_deltaCP
+        U_t3 = c_23 * c_13
+
+        matrix = np.array([
+                [U_e1 , U_e2,  U_e3],
+                [U_mu1, U_mu2, U_mu3],
+                [U_t1,  U_t2,  U_t3]])
+
+        return matrix
+
+
+def PreComputingU_PMNSElementSquared():
+    """
+    Compute the squared modulus of each element of the PMNS matrix using normal ordering values.
+
+    Returns:
+    numpy.ndarray
+        A 3x3 numpy array containing the squared modulus of the PMNS matrix elements.
+    """
+
+    # Calculate the PMNS matrix using normal ordering values
+    U = U_PMNS(theta12=33.44, theta13=8.57, theta23=49.20, deltaCP=197)
+
+    # Compute the squared modulus (|U_ai|^2) of each element of the PMNS matrix
+    matrix = np.abs(U)**2
+
+    return matrix
