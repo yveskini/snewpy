@@ -157,9 +157,14 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
             #in case we have single values
             times = u.Quantity([tstart,tend])
         times.sort()
+    # Taking only the time limit to avoid unnecessary comptutation
+    low=np.where((snmodel.get_time()>=times[0]) & (snmodel.get_time()<=times[-1]))[0][0]
+    up =np.where((snmodel.get_time()>=times[0]) & (snmodel.get_time()<=times[-1]))[0][-1]
 
+    t=snmodel.get_time()[low-1:up+1]
+    #print(t, low, up)
     #energy with 0.2 MeV binning
-    energy   = np.arange(0, 101, 0.2) << u.MeV
+    energy   = np.arange(0.1, 101., 0.2) << u.MeV
     #energy bins similar to SNOwGLoBES
     energy_t = (np.linspace(0, 100, 201)+0.25) << u.MeV
 
@@ -167,7 +172,7 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
     ###   Adding extra line #######
     # If no masses provided, do nothing. Just use the old SNEWPY code
     if neutrino_masses ==None:
-        flux = snmodel.get_flux(t=snmodel.get_time(), E=energy,  distance=d, flavor_xform=flavor_transformation)
+        flux = snmodel.get_flux(t=t, E=energy,  distance=d, flavor_xform=flavor_transformation)
 
     elif mass_hierachy=="arbitrary":
 
@@ -376,10 +381,14 @@ def collate(SNOwGLoBESdir, tarball_path, detector_input="", skip_plots=False, ve
     with TemporaryDirectory(prefix='snowglobes') as tempdir:
         tempdir = Path(tempdir)
         for det in tables:
+            #print("det",det)
             results[det] = {}
             for flux,t in tables[det].items():
+            #    print("flux",flux)
                 t = aggregate_channels(t,nc='nc_',e='_e')
                 for w in ['weighted']:
+            #        print("weight",w)
+            #        print("t",t)
                     for s in smearing_options:
                         table = t[w][s]
                         filename_base = f'{flux}_{det}_events_{s}_{w}'

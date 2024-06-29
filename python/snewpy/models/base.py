@@ -244,33 +244,15 @@ class SupernovaModel(ABC):
             ####################### Computing time delay effect first ###################
 
             distance = distance << u.kpc   # Assume distance is in Kpc
-            distance = distance.to('m')    # Convert distance to  m
-
             # Computing time delay dela_ts
             neutrino_masses = neutrino_masses  << u.eV   # Assume the masses are given in eV
-            neutrino_masses = neutrino_masses.to("MeV")  # Converting to MeV
-
-            # Creating a new energy grid to have the same shape as the time 't'
-            # Going to use the same bounds as the default energy # -*- coding: utf-8 -*-
-
-            energy=np.linspace(E[0], E[-1], t.shape[0])
-
-            # Avoid division by zero, I'm taking the smallest floating point of numpy
-            energy[energy==0] = np.finfo(float).eps * E.unit
-
-            m1=neutrino_masses[0]
-            m2=neutrino_masses[1]
-            m3=neutrino_masses[2]
-
-            delta_t1=0.5*(distance/aconst.c)*(m1/energy)**2
-            delta_t2=0.5*(distance/aconst.c)*(m2/energy)**2
-            delta_t3=0.5*(distance/aconst.c)*(m3/energy)**2
+              # Converting to MeV
 
             # Compute initial flux with time delays
             shifts={}
-            shifts[0]=self.get_initial_spectra(t-delta_t1, E)
-            shifts[1]=self.get_initial_spectra(t-delta_t2, E)
-            shifts[2]=self.get_initial_spectra(t-delta_t3, E)
+            shifts[0]=self.get_initial_spectra_arbitrary(t, E, neutrino_masses[0], distance)
+            shifts[1]=self.get_initial_spectra_arbitrary(t, E, neutrino_masses[1], distance)
+            shifts[2]=self.get_initial_spectra_arbitrary(t, E, neutrino_masses[2], distance)
 
 
             U=PrecomputingU_PMNSelementsquared
@@ -306,7 +288,7 @@ class SupernovaModel(ABC):
 
 
 
-
+            #print(transformed_spectra[Flavor.NU_E])
             return transformed_spectra
 
 
@@ -632,6 +614,58 @@ class PinchedModel(SupernovaModel):
         super().__init__(time, QCD_effect_time, metadata)
 
 
+    def get_initial_spectra_arbitrary(self, t, E, mass, distance, flavors=Flavor):
+
+        """
+        Get initial neutrino spectra/luminosity curves before oscillation.
+
+        Parameters
+        ----------
+        t : astropy.Quantity
+            Time array to evaluate initial spectra.
+        E : astropy.Quantity or ndarray of astropy.Quantity
+            Energies to evaluate the initial spectra.
+        mass : astropy.Quantity
+            Mass of the neutrino.
+        distance : astropy.Quantity
+            Distance to the neutrino source.
+        flavors : iterable of snewpy.neutrino.Flavor, optional
+            List of neutrino flavors to return spectra for (default is all flavors).
+
+        Returns
+        -------
+        initialspectra : dict
+            Dictionary containing the initial spectra for each specified flavor,
+            keyed by neutrino flavor.
+        """
+        # Ensure distance is in meters
+        distance = distance.to('m')
+        # Ensure mass is in MeV
+        mass = mass.to('MeV')
+
+        # Initialize the dictionary to hold the spectra for each flavor
+        initialspectra = {}
+
+        # Iterate over the specified neutrino flavors
+        for flavor in flavors:
+            # Create an array to store spectra for each time-energy pair
+            new_result = np.zeros((t.size, E.size))
+
+            # Calculate the time delay due to neutrino mass for each energy
+            delta_t = 0.5 * (distance / aconst.c) * (mass / E)**2
+
+            # Iterate over each energy value
+            for i, energy in enumerate(E):
+                # Adjust time for the mass effect and get the initial spectra
+                result = self.get_initial_spectra(t=t - delta_t[i], E=energy)[flavor]
+                # Assign the result to the corresponding column
+                new_result[:, i] = result
+
+            # Store the spectra in the dictionary with the appropriate units
+            initialspectra[flavor] = new_result * result.unit
+
+        return initialspectra
+
 
     def get_initial_spectra(self, t, E, flavors=Flavor):
         """Get neutrino spectra/luminosity curves before oscillation.
@@ -671,6 +705,7 @@ class PinchedModel(SupernovaModel):
         #print("TIME", t)
 
         for flavor in flavors:
+            #print("Bokala",E)
             # Use np.interp rather than scipy.interpolate.interp1d because it
             # can handle dimensional units (astropy.Quantity).
             L  = get_value(np.interp(t, self.time, self.luminosity[flavor].to('erg/s')))
@@ -690,6 +725,7 @@ class PinchedModel(SupernovaModel):
             #remove unnecessary dimensions, if E or t was scalar:
             result = np.squeeze(result)
             initialspectra[flavor] = result
+            #print("Result",result.shape)
         return initialspectra
 
 
