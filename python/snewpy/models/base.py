@@ -38,7 +38,7 @@ class SupernovaModel(ABC):
         super().__init_subclass__(**kwargs)
         cls.__init__ = _wrap_init(cls.__init__, cls.__post_init_check)
 
-    def __init__(self, time, QCD_effect_time, metadata):
+    def __init__(self, time, QCD_effect_time, BH_effect_time, metadata):
         """Initialize supernova model base class
         (call this method in the subclass constructor as ``super().__init__(time,metadata)``).
 
@@ -549,7 +549,7 @@ def get_value(x):
 class PinchedModel(SupernovaModel):
     """Subclass that contains spectra/luminosity pinches for supernova models."""
 
-    def __init__(self, simtab, QCD_effect_time, metadata):
+    def __init__(self, simtab, QCD_effect_time, BH_effect_time, metadata):
         """
         Initialize the PinchedModel using the data from the given table.
 
@@ -558,8 +558,12 @@ class PinchedModel(SupernovaModel):
         simtab: astropy.Table
             Should contain columns TIME, {L,E,ALPHA}_NU_{E,E_BAR,X,X_BAR}.
             The values for X_BAR may be missing, in which case NU_X data will be used.
-        QCD_effect_time: float
-            Time after which QCD effects are considered, in seconds.
+
+        QCD_effect_time : float, optional
+            Time in seconds when QCD effects are considered in the supernova model. Default is -1 (no QCD effects).
+        BH_effect_time : float, optional
+            Time in seconds when black hole formation effects are considered in the supernova model. Default is -1 (no black hole effects).
+
         metadata: dict
             Dictionary containing model parameters.
         """
@@ -610,8 +614,13 @@ class PinchedModel(SupernovaModel):
             self.meanE[f] = simtab[f'E_{f.name}'] << u.MeV
             self.pinch[f] = simtab[f'ALPHA_{f.name}']
 
+        if BH_effect_time > 0.:
+            for f in Flavor:
+                index_BH = np.where(time >= BH_effect_time.to(u.s))[0][0]
+                self.luminosity[f][index_BH:] = 0 * self.luminosity[f].unit # Setting the luminosity to 0.0 erg/s
+
         # Initialize the superclass with the time, QCD_effect_time, and metadata
-        super().__init__(time, QCD_effect_time, metadata)
+        super().__init__(time, QCD_effect_time, BH_effect_time, metadata)
 
 
     def get_initial_spectra_arbitrary(self, t, E, mass, distance, flavors=Flavor):
@@ -732,7 +741,7 @@ class PinchedModel(SupernovaModel):
 class _GarchingArchiveModel(PinchedModel):
     """Subclass that reads models in the format used in the
     `Garching Supernova Archive <https://wwwmpa.mpa-garching.mpg.de/ccsnarchive/>`_."""
-    def __init__(self, filename, QCD_effect_time, eos='LS220', metadata={}):
+    def __init__(self, filename, QCD_effect_time, BH_effect_time, eos='LS220', metadata={}):
         """Model Initialization.
 
         Parameters
@@ -791,7 +800,7 @@ class _GarchingArchiveModel(PinchedModel):
                 mergtab[_ename].fill_value = 0.
                 mergtab[_aname].fill_value = 0.
         simtab = mergtab.filled()
-        super().__init__(simtab,QCD_effect_time, metadata)
+        super().__init__(simtab,QCD_effect_time, BH_effect_time,metadata)
 
 
 class _RegistryModel(ABC):

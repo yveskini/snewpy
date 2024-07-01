@@ -100,40 +100,45 @@ def generate_time_series(model_path, model_type, transformation_type, d, output_
     fluence.save(tfname)
     return tfname
 
-def generate_fluence(model_path, model_type, transformation_type, d, output_filename=None, tstart=None, tend=None, neutrino_masses=None,mass_hierachy="NO",QCD_effect_time=-1,snmodel_dict={}):
-    """Generate fluence files in SNOwGLoBES format.
+def generate_fluence(model_path, model_type, transformation_type, d, output_filename=None, tstart=None, tend=None, neutrino_masses=None,mass_hierachy="NO",QCD_effect_time=-1,BH_effect_time=-1, snmodel_dict={}):
+    """
+    Generate neutrino fluence files in the SNOwGLoBES format.
 
-    This version will subsample the times in a supernova model, produce energy
-    tables expected by SNOwGLoBES, and compress the output into a tarfile.
+    This function processes supernova model data to generate fluence files that
+    can be used with SNOwGLoBES for neutrino detection simulations. It subsamples
+    time intervals, produces energy tables, and compresses the output into a tar file.
 
     Parameters
     ----------
     model_path : str
-        Input file containing neutrino flux information from supernova model.
+        Path to the input file containing neutrino flux information from the supernova model.
     model_type : str
-        Format of input file. Matches the name of the corresponding class in :py:mod:`snewpy.models`.
+        Type of the input file. Corresponds to the class name in :py:mod:`snewpy.models`.
     transformation_type : str
-        Name of flavor transformation. See snewpy.flavor_transformation documentation for possible values.
+        Type of flavor transformation. Refer to `snewpy.flavor_transformation` for possible values.
     d : int or float
-        Distance to supernova in kpc.
-    output_filename : str or None
-        Name of output file. If ``None``, will be based on input file name.
+        Distance to the supernova in kiloparsecs (kpc).
+    output_filename : str, optional
+        Name of the output file. If `None`, it will be generated based on the input file name.
     tstart : astropy.Quantity or None
-        Start of time interval to integrate over, or list of start times of the time series bins.
+        Start time for integration or a list of start times for the time series bins.
     tend : astropy.Quantity or None
-        End of time interval to integrate over, or list of end times of the time series bins.
-
-    neutrino_masses: None or List
-        Neutrino masses list [m1,m2,m3]. If None, then used the default SNEWPY
-    mass_hierachy: str
-        mass_hierachy="NO" for Normal ordering or "IO" for INVERTED ordering
-    snmodel_dict : dict
-        Additional arguments for setting up the supernova model. See documentation of relevant ``SupernovaModel`` subclass for available options. (Optional)
+        End time for integration or a list of end times for the time series bins.
+    neutrino_masses : list or None, optional
+        List of neutrino masses [m1, m2, m3]. Uses default SNEWPY masses if `None`.
+    mass_hierarchy : str, optional
+        Mass hierarchy: "NO" for Normal Ordering, "IO" for Inverted Ordering, "arbitrary" for custom.
+    QCD_effect_time : float, optional
+        Time in seconds when QCD effects are considered in the supernova model. Default is -1 (no QCD effects).
+    BH_effect_time : float, optional
+        Time in seconds when black hole formation effects are considered in the supernova model. Default is -1 (no black hole effects).
+    snmodel_dict : dict, optional
+        Additional arguments for the supernova model setup. Refer to the relevant `SupernovaModel` subclass documentation for options.
 
     Returns
     -------
     str
-        Path of NumPy archive file with neutrino fluence data.
+        Path to the generated NumPy archive file containing neutrino fluence data.
     """
     model_class = getattr(snewpy.models.ccsn, model_type)
 
@@ -142,7 +147,7 @@ def generate_fluence(model_path, model_type, transformation_type, d, output_file
     flavor_transformation = flavor_transformation_dict[transformation_type]
 
     model_dir, model_file = os.path.split(os.path.abspath(model_path))
-    snmodel = model_class(filename=model_path, QCD_effect_time=QCD_effect_time, **snmodel_dict)
+    snmodel = model_class(filename=model_path, QCD_effect_time=QCD_effect_time, BH_effect_time=BH_effect_time, **snmodel_dict)
 
     #set the timings up
     #default if inputs are None: full time window of the model

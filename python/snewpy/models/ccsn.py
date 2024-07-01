@@ -99,7 +99,7 @@ class Nakazato_2013(_RegistryModel):
                                   and not (p['progenitor_mass'] == 30 * u.Msun and p['metallicity'] == 0.004))
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, *, progenitor_mass=None, revival_time=None, metallicity=None, eos=None, QCD_effect_time=-1):
+    def __new__(cls, filename=None, *, progenitor_mass=None, revival_time=None, metallicity=None, eos=None, QCD_effect_time=-1,BH_effect_time=-1):
         """Model initialization.
 
         Parameters
@@ -150,7 +150,7 @@ class Nakazato_2013(_RegistryModel):
                     'Metallicity': float(filename.split('-')[-2].strip('z%')),
                     'Revival time': 0 * u.ms
                 })
-            return loaders.Nakazato_2013(os.path.abspath(filename), metadata)
+            return loaders.Nakazato_2013(os.path.abspath(filename),QCD_effect_time,BH_effect_time, metadata)
 
         # Load from model parameters
         user_params = dict(zip(cls.param.keys(), (progenitor_mass, revival_time, metallicity, eos)))
@@ -173,7 +173,7 @@ class Nakazato_2013(_RegistryModel):
         else:
             filename = f"nakazato-{eos}-BH-z{metallicity}-s{progenitor_mass:3.1f}.fits"
 
-        return loaders.Nakazato_2013(filename, QCD_effect_time, metadata)
+        return loaders.Nakazato_2013(filename,QCD_effect_time,BH_effect_time, metadata)
 
     # Populate Docstring with param values
     __new__.__doc__ = __new__.__doc__.format(**param)
@@ -186,7 +186,7 @@ class Sukhbold_2015(_RegistryModel):
              'eos': ['LS220', 'SFHo']}
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, *, progenitor_mass=None, eos=None, QCD_effect_time=-1):
+    def __new__(cls, filename=None, *, progenitor_mass=None, eos=None, QCD_effect_time=-1,BH_effect_time=-1):
         """Model Initialization
 
         Parameters
@@ -213,7 +213,7 @@ class Sukhbold_2015(_RegistryModel):
                 'Progenitor mass': float(filename.split('-')[-1].strip('z%.fits')) * u.Msun,
                 'EOS': filename.split('-')[-2]
             }
-            return loaders.Sukhbold_2015(os.path.abspath(filename), metadata)
+            return loaders.Sukhbold_2015(os.path.abspath(filename), QCD_effect_time,BH_effect_time, metadata)
 
         user_params = dict(zip(cls.param.keys(), (progenitor_mass, eos)))
         cls.check_valid_params(cls, **user_params)
@@ -227,7 +227,7 @@ class Sukhbold_2015(_RegistryModel):
             'Progenitor mass': progenitor_mass,
             'EOS': eos
         }
-        return loaders.Sukhbold_2015(filename, QCD_effect_time, metadata)
+        return loaders.Sukhbold_2015(filename, QCD_effect_time,BH_effect_time, metadata)
 
     # Populate Docstring with param values
     __new__.__doc__ = __new__.__doc__.format(**param)
@@ -245,10 +245,10 @@ class Tamborra_2014(_RegistryModel):
         (p['progenitor_mass'] == 27. * u.Msun and p['direction'] in (1,2,3))
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, direction=None,QCD_effect_time=-1):
+    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, direction=None,QCD_effect_time=-1,BH_effect_time=-1):
         if filename is not None:
             # Metadata creation is implemented in snewpy.models.base._GarchingArchiveModel
-            return loaders.Tamborra_2014(os.path.abspath(filename))
+            return loaders.Tamborra_2014(os.path.abspath(filename), QCD_effect_time,BH_effect_time)
 
         cls.check_valid_params(cls, progenitor_mass=progenitor_mass, direction=direction)
         filename = f's{progenitor_mass.value:3.1f}c_3D_dir{direction}'
@@ -259,7 +259,7 @@ class Tamborra_2014(_RegistryModel):
         }
 
         # Metadata is handled by __init__ in _GarchingArchiveModel
-        return loaders.Tamborra_2014(filename=filename,QCD_effect_time=QCD_effect_time, metadata=metadata)
+        return loaders.Tamborra_2014(filename=filename,QCD_effect_time=QCD_effect_time,BH_effect_time=BH_effect_time, metadata=metadata)
 
     # Populate Docstring with param values
     __new__.__doc__ = loaders.Tamborra_2014.__init__.__doc__.format(**param)
@@ -272,10 +272,10 @@ class Bollig_2016(_RegistryModel):
 
     param = {'progenitor_mass': [11.2, 27.] * u.Msun}
 
-    def __new__(cls, filename=None,  eos='LS220', *, progenitor_mass=None, QCD_effect_time):
+    def __new__(cls, filename=None,  eos='LS220', *, progenitor_mass=None, QCD_effect_time=-1, BH_effect_time=-1):
         if filename is not None:
             # Metadata creation is implemented in snewpy.models.base._GarchingArchiveModel
-            return loaders.Bollig_2016(filename=os.path.abspath(filename), QCD_effect_time=QCD_effect_time)
+            return loaders.Bollig_2016(filename=os.path.abspath(filename), QCD_effect_time=QCD_effect_time,BH_effect_time=BH_effect_time)
 
         cls.check_valid_params(cls, progenitor_mass=progenitor_mass)
         filename = f's{progenitor_mass.value:3.1f}c'
@@ -285,7 +285,7 @@ class Bollig_2016(_RegistryModel):
             'EOS': 'LS220'
         }
 
-        return loaders.Bollig_2016(filename=filename,QCD_effect_time=QCD_effect_time, metadata=metadata)
+        return loaders.Bollig_2016(filename=filename,QCD_effect_time=QCD_effect_time,BH_effect_time=BH_effect_time, metadata=metadata)
 
     # Populate Docstring with param values (Docstring is inherited from base._GarchingArchiveModel.__init__)
     __new__.__doc__ = loaders.Bollig_2016.__init__.__doc__.format(**param)
@@ -300,10 +300,10 @@ class Walk_2018(_RegistryModel):
     param = {'progenitor_mass': 15. * u.Msun, 'rotation': ['fast','slow','non'], 'direction': [1,2,3]}
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, rotation=None, direction=None,QCD_effect_time=-1):
+    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, rotation=None, direction=None,QCD_effect_time=-1,BH_effect_time=-1):
         if filename is not None:
             # Metadata creation is implemented in snewpy.models.base._GarchingArchiveModel
-            return loaders.Walk_2018(os.path.abspath(filename))
+            return loaders.Walk_2018(os.path.abspath(filename),QCD_effect_time,BH_effect_time)
 
         cls.check_valid_params(cls, progenitor_mass=progenitor_mass, rotation=rotation, direction=direction)
         filename = f's{progenitor_mass.value:3.1f}c_3D_{rotation}rot_dir{direction}'
@@ -313,7 +313,7 @@ class Walk_2018(_RegistryModel):
             'EOS': 'LS220'
         }
 
-        return loaders.Walk_2018(filename=filename,QCD_effect_time=QCD_effect_time, metadata=metadata)
+        return loaders.Walk_2018(filename=filename,QCD_effect_time=QCD_effect_time,BH_effect_time=BH_effect_time, metadata=metadata)
 
     # Populate Docstring with param values (Docstring is inherited from base._GarchingArchiveModel.__init__)
     __new__.__doc__ = loaders.Walk_2018.__init__.__doc__.format(**param)
@@ -331,7 +331,7 @@ class Walk_2019(_RegistryModel):
         (p['progenitor_mass'] == 40. * u.Msun and p['direction'] in (1,2,3))
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, direction=None, QCD_effect_time=-1):
+    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, direction=None, QCD_effect_time=-1,BH_effect_time=-1):
         if filename is not None:
             # Metadata creation is implemented in snewpy.models.base._GarchingArchiveModel
             return loaders.Walk_2019(os.path.abspath(filename))
@@ -344,7 +344,7 @@ class Walk_2019(_RegistryModel):
             'EOS': 'LS220'
         }
 
-        return loaders.Walk_2019(filename=filename, QCD_effect_time=QCD_effect_time, metadata=metadata)
+        return loaders.Walk_2019(filename=filename, QCD_effect_time=QCD_effect_time,BH_effect_time=BH_effect_time, metadata=metadata)
 
     # Populate Docstring with param values (Docstring is inherited from base._GarchingArchiveModel.__init__)
     __new__.__doc__ = loaders.Walk_2019.__init__.__doc__.format(**param)
@@ -363,7 +363,7 @@ class OConnor_2013(_RegistryModel):
                     'eos': ['HShen', 'LS220']}
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, base=None, mass=None, eos='LS220', *, progenitor_mass=None, QCD_effect_time=-1):
+    def __new__(cls, base=None, mass=None, eos='LS220', *, progenitor_mass=None, QCD_effect_time=-1,BH_effect_time=-1):
         """Model Initialization.
 
         Parameters
@@ -405,7 +405,7 @@ class OConnor_2013(_RegistryModel):
                         'EOS': eos}
 
             filename = os.path.join(base, f"{eos}_timeseries.tar.gz")
-            return loaders.OConnor_2013(os.path.abspath(filename), metadata)
+            return loaders.OConnor_2013(os.path.abspath(filename), QCD_effect_time,BH_effect_time,metadata)
 
         # Load from Parameters
         cls.check_valid_params(cls, progenitor_mass=progenitor_mass, eos=eos)
@@ -416,7 +416,7 @@ class OConnor_2013(_RegistryModel):
             'EOS': eos,
         }
 
-        return loaders.OConnor_2013(filename=filename, QCD_effect_time=QCD_effect_time, metadata=metadata)
+        return loaders.OConnor_2013(filename=filename, QCD_effect_time=QCD_effect_time,BH_effect_time=BH_effect_time, metadata=metadata)
 
     # Populate Docstring with param values
     __new__.__doc__ = __new__.__doc__.format(**_param_abbrv)
@@ -429,7 +429,7 @@ class OConnor_2015(_RegistryModel):
     param = {'progenitor_mass': 40 * u.Msun}
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, QCD_effect_time=-1):
+    def __new__(cls, filename=None, eos='LS220', *, progenitor_mass=None, QCD_effect_time=-1,BH_effect_time=-1):
         """Model Initialization.
 
         Parameters
@@ -457,7 +457,7 @@ class OConnor_2015(_RegistryModel):
         }
 
         if filename is not None:
-            return loaders.OConnor_2015(os.path.abspath(filename), metadata)
+            return loaders.OConnor_2015(os.path.abspath(filename), QCD_effect_time,BH_effect_time,metadata)
 
         # Load from Parameters
         cls.check_valid_params(cls, progenitor_mass=progenitor_mass)
@@ -479,7 +479,7 @@ class Zha_2021(_RegistryModel):
     _param_abbrv = {'progenitor_mass': '[16..26, 19.89, 22.39, 30, 33] solMass'}
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, eos='ST0S_B145', *, progenitor_mass=None, QCD_effect_time=-1):
+    def __new__(cls, filename=None, eos='ST0S_B145', *, progenitor_mass=None, QCD_effect_time=-1,BH_effect_time=-1):
         """Model Initialization.
 
         Parameters
@@ -504,7 +504,7 @@ class Zha_2021(_RegistryModel):
         if filename is not None:
             metadata = {'Progenitor mass': float(os.path.splitext(os.path.basename(filename))[0][1:]) * u.Msun,
                         'EOS': 'STOS_B145'}
-            return loaders.Zha_2021(os.path.abspath(filename), metadata)
+            return loaders.Zha_2021(os.path.abspath(filename), QCD_effect_time,BH_effect_time,metadata)
 
         # Load from Parameters
         cls.check_valid_params(cls, progenitor_mass=progenitor_mass)
@@ -541,7 +541,7 @@ class Warren_2020(_RegistryModel):
 
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, eos='SFHo', *, progenitor_mass=None, turbmixing_param=None,QCD_effect_time=-1):
+    def __new__(cls, filename=None, eos='SFHo', *, progenitor_mass=None, turbmixing_param=None,QCD_effect_time=-1,BH_effect_time=-1):
         """
         Parameters
         ----------
@@ -570,7 +570,7 @@ class Warren_2020(_RegistryModel):
                         'Turb. mixing param.': float(turbmixing_param[1:]),
                         'EOS': 'SFHo'}
 
-            return loaders.Warren_2020(os.path.abspath(filename), QCD_effect_time, metadata)
+            return loaders.Warren_2020(os.path.abspath(filename), QCD_effect_time,BH_effect_time, metadata)
 
         # Load from Parameters
         user_params = dict(zip(cls.param.keys(), (progenitor_mass, turbmixing_param)))
@@ -590,7 +590,7 @@ class Warren_2020(_RegistryModel):
             'EOS': 'SFHo',
         }
 
-        return loaders.Warren_2020(fname, QCD_effect_time, metadata)
+        return loaders.Warren_2020(fname, QCD_effect_time,BH_effect_time, metadata)
 
     # Populate Docstring with abbreviated param values
     __new__.__doc__ = __new__.__doc__.format(**_param_abbrv)
@@ -606,7 +606,7 @@ class Kuroda_2020(_RegistryModel):
 
     @_warn_deprecated_filename_argument
     def __new__(cls, filename=None, eos='LS220', mass=20*u.Msun, *, rotational_velocity=None,
-                magnetic_field_exponent=None, QCD_effect_time=-1):
+                magnetic_field_exponent=None, QCD_effect_time=-1,BH_effect_time=-1):
         """
         Parameters
         ----------
@@ -640,7 +640,7 @@ class Kuroda_2020(_RegistryModel):
                 'B_0 Exponent': int(magnetic_field_exponent),
                 'EOS': 'LS220'
             }
-            return loaders.Kuroda_2020(os.path.abspath(filename), metadata)
+            return loaders.Kuroda_2020(os.path.abspath(filename),QCD_effect_time,BH_effect_time, metadata)
 
         # Load from Parameters
         cls.check_valid_params(cls, rotational_velocity=rotational_velocity,
@@ -654,7 +654,7 @@ class Kuroda_2020(_RegistryModel):
             'EOS': 'LS220',
             }
 
-        return loaders.Kuroda_2020(filename, QCD_effect_time, metadata)
+        return loaders.Kuroda_2020(filename, QCD_effect_time,BH_effect_time, metadata)
 
     __new__.__doc__ = __new__.__doc__.format(**param)
 
@@ -666,7 +666,7 @@ class Fornax_2019(_RegistryModel):
     param = {'progenitor_mass': [9, 10, 12, 13, 14, 15, 16, 19, 25, 60] * u.Msun}
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, cache_flux=False, *, progenitor_mass=None, QCD_effect_time=-1):
+    def __new__(cls, filename=None, cache_flux=False, *, progenitor_mass=None, QCD_effect_time=-1,BH_effect_time=-1):
         """Model Initialization.
 
         Parameters
@@ -684,7 +684,7 @@ class Fornax_2019(_RegistryModel):
         if filename is not None:
             progenitor_mass = os.path.splitext(os.path.basename(filename))[0].split('_')[2]
             metadata = {'Progenitor mass': int(progenitor_mass[:-1]) * u.Msun}
-            return loaders.Fornax_2019(os.path.abspath(filename), metadata, cache_flux=cache_flux)
+            return loaders.Fornax_2019(os.path.abspath(filename), QCD_effect_time,BH_effect_time, metadata, cache_flux=cache_flux)
 
         # Load from Parameters
         metadata = {'Progenitor mass': progenitor_mass}
@@ -695,7 +695,7 @@ class Fornax_2019(_RegistryModel):
         else:
             filename = f'lum_spec_{int(progenitor_mass.value):d}M.h5'
 
-        return loaders.Fornax_2019(filename,QCD_effect_time, metadata, cache_flux=cache_flux)
+        return loaders.Fornax_2019(filename,QCD_effect_time,BH_effect_time, metadata, cache_flux=cache_flux)
 
     # Populate Docstring with abbreviated param values
     __new__.__doc__ = __new__.__doc__.format(**param)
@@ -710,7 +710,7 @@ class Fornax_2021(_RegistryModel):
     _param_abbrv = {'progenitor_mass': '[12..26, 26.99] solMass'}
 
     @_warn_deprecated_filename_argument
-    def __new__(cls, filename=None, *, progenitor_mass=None, QCD_effect_time=-1):
+    def __new__(cls, filename=None, *, progenitor_mass=None, QCD_effect_time=-1,BH_effect_time=-1):
         """Model Initialization.
 
         Parameters
@@ -726,7 +726,7 @@ class Fornax_2021(_RegistryModel):
         if filename is not None:
             progenitor_mass = os.path.splitext(os.path.basename(filename))[0].split('_')[2]
             metadata = {'Progenitor mass': float(progenitor_mass[:-1]) * u.Msun}
-            return loaders.Fornax_2021(os.path.abspath(filename), metadata)
+            return loaders.Fornax_2021(os.path.abspath(filename), QCD_effect_time,BH_effect_time, metadata)
 
         # Load from Parameters
         cls.check_valid_params(cls, progenitor_mass=progenitor_mass)
@@ -737,7 +737,7 @@ class Fornax_2021(_RegistryModel):
 
         metadata = {'Progenitor mass': progenitor_mass}
 
-        return loaders.Fornax_2021(filename, QCD_effect_time, metadata)
+        return loaders.Fornax_2021(filename, QCD_effect_time,BH_effect_time, metadata)
 
     # Populate Docstring with abbreviated param values
     __new__.__doc__ = __new__.__doc__.format(**_param_abbrv)
@@ -776,7 +776,7 @@ class Fornax_2022(_RegistryModel):
         'progenitor': '["9.0".."26.99"]',
         'progenitor_mass': '[9.0..26.99] solMass'}
 
-    def __new__(cls, *, progenitor=None, progenitor_mass=None,QCD_effect_time=-1):
+    def __new__(cls, *, progenitor=None, progenitor_mass=None,QCD_effect_time=-1,BH_effect_time=-1):
         """Model Initialization.
 
         Parameters
@@ -799,7 +799,7 @@ class Fornax_2022(_RegistryModel):
         metadata = {'Progenitor': progenitor,
                     'Progenitor mass': progenitor_mass}
 
-        return loaders.Fornax_2022(filename, QCD_effect_time, metadata)
+        return loaders.Fornax_2022(filename, QCD_effect_time,BH_effect_time, metadata)
 
     # Populate Docstring with abbreviated param values
     __new__.__doc__ = __new__.__doc__.format(**_param_abbrv)
