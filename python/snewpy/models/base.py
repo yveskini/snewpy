@@ -594,25 +594,36 @@ class PinchedModel(SupernovaModel):
             #print("There")
             # Get the index where to insert QCD effects
             index = np.where(time >= QCD_effect_time.to(u.s))[0][0]
-            high_scaling = {"0": 0.32, "1": 0.9, "2": 1.16, "3": 0.9}
+
+            # This Setting are tailored for Bollig 2016 model, find the correct values for the other model if want to use.
+            high_scaling_L = {"0": 0.32, "1": 0.9, "2": 1.16, "3": 0.9}
+            high_scaling_E = {"0": 0.02, "1": 0.055, "2": 0.03, "3": 0.06}
 
         # Iterate through each flavor and set the corresponding properties
         for i, f in enumerate(Flavor):
             self.luminosity[f] = simtab[f'L_{f.name}']# << u.erg / u.s
+            self.meanE[f] = simtab[f'E_{f.name}']# << u.MeV
+            self.pinch[f] = simtab[f'ALPHA_{f.name}']
             if i == 0:
-                normalization = np.max(self.luminosity[f])
+                normalization_L = np.max(self.luminosity[f])
+                normalization_E = np.max(self.meanE[f])
+
             mu = time.value[index]  # Mean
             sigma = 0.0005  # Standard deviation
-            height = high_scaling[str(i)] * normalization  # Maximum height
+            height_L = high_scaling_L[str(i)] * normalization_L  # Maximum height
+            height_E = high_scaling_E[str(i)] * normalization_L  # Maximum height
 
             # Calculate the Gaussian distribution
-            gaussian = height * norm.pdf(time.value, mu, sigma) / np.max(norm.pdf(time.value, mu, sigma))
+            gaussian_L = height_L * norm.pdf(time.value, mu, sigma) / np.max(norm.pdf(time.value, mu, sigma))
+            gaussian_E = height_E * norm.pdf(time.value, mu, sigma) / np.max(norm.pdf(time.value, mu, sigma))
 
             # Apply Gaussian scaling to luminosity (commented out for specific models)
-            self.luminosity[f] += gaussian
+            self.luminosity[f] += gaussian_L
+            self.meanE[f] += gaussian_E
+
             self.luminosity[f] =self.luminosity[f] << u.erg/u.s
             self.meanE[f] = simtab[f'E_{f.name}'] << u.MeV
-            self.pinch[f] = simtab[f'ALPHA_{f.name}']
+            #print("Yves", f,normalization ,len(self.luminosity[f]))
 
         if BH_effect_time > 0.:
             for f in Flavor:
