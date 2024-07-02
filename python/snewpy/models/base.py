@@ -583,11 +583,13 @@ class PinchedModel(SupernovaModel):
         self.pinch = {}
 
         # High scaling values computed from FIG.1 of https://arxiv.org/pdf/2208.14469
-        high_scaling = {}
+        high_scaling_E = {}
+        high_scaling_L = {}
 
         # Determine whether to add QCD effects
         if QCD_effect_time <= 0.:
-            high_scaling = {"0": 0.0, "1": 0.0, "2": 0.0, "3": 0.0}
+            high_scaling_L = {"0": 0.0, "1": 0.0, "2": 0.0, "3": 0.0}
+            high_scaling_E = {"0": 0.0, "1": 0.0, "2": 0.0, "3": 0.0}
             index=0 # It does not actually matter
             #print("Here")
         else:
@@ -597,7 +599,7 @@ class PinchedModel(SupernovaModel):
 
             # This Setting are tailored for Bollig 2016 model, find the correct values for the other model if want to use.
             high_scaling_L = {"0": 0.32, "1": 0.9, "2": 1.16, "3": 0.9}
-            high_scaling_E = {"0": 0.02, "1": 0.055, "2": 0.03, "3": 0.06}
+            high_scaling_E = {"0": 0.45, "1": 1.3, "2": 0.6, "3": 1.45}
 
         # Iterate through each flavor and set the corresponding properties
         for i, f in enumerate(Flavor):
@@ -611,7 +613,7 @@ class PinchedModel(SupernovaModel):
             mu = time.value[index]  # Mean
             sigma = 0.0005  # Standard deviation
             height_L = high_scaling_L[str(i)] * normalization_L  # Maximum height
-            height_E = high_scaling_E[str(i)] * normalization_L  # Maximum height
+            height_E = high_scaling_E[str(i)] * normalization_E  # Maximum height
 
             # Calculate the Gaussian distribution
             gaussian_L = height_L * norm.pdf(time.value, mu, sigma) / np.max(norm.pdf(time.value, mu, sigma))
@@ -623,7 +625,6 @@ class PinchedModel(SupernovaModel):
 
             self.luminosity[f] =self.luminosity[f] << u.erg/u.s
             self.meanE[f] = simtab[f'E_{f.name}'] << u.MeV
-            #print("Yves", f,normalization ,len(self.luminosity[f]))
 
         if BH_effect_time > 0.:
             for f in Flavor:
