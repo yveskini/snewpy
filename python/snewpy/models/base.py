@@ -627,9 +627,46 @@ class PinchedModel(SupernovaModel):
             self.meanE[f] = simtab[f'E_{f.name}'] << u.MeV
 
         if BH_effect_time > 0.:
-            for f in Flavor:
-                index_BH = np.where(time >= BH_effect_time.to(u.s))[0][0]
-                self.luminosity[f][index_BH:] = 0 * self.luminosity[f].unit # Setting the luminosity to 0.0 erg/s
+            new_meanE = {}
+            new_luminosity = {}
+            new_pinch = {}
+            high_scaling_E = {"0": 28, "1": 23, "2": 32, "3": 23}
+
+            index_BH = np.where(time >= BH_effect_time.to(u.s))[0][0]
+
+            def custom_sigmoid(t, a, b, t1, w):
+                w = w * u.ms
+                w = w.to(u.s)
+                k = 10 / w
+                return a + (b - a) / (1 + np.exp(-k * (t - t1 - w / 2)))
+
+            w = 0.5
+            t1 = time[index_BH]
+            t_values = np.arange(t1.value, time[index_BH+2].value, 0.00001) * time.unit  # Generating new time values
+            time = np.concatenate((time[:index_BH], t_values, time[index_BH+2:]))
+            self.t_values = t_values
+
+            for i, f in enumerate(Flavor):
+                a_E = self.meanE[f][index_BH]  # Starting value
+                b_E = high_scaling_E[str(i)] * self.meanE[f].unit  # Ending value
+
+                a_L = self.luminosity[f][index_BH]
+                b_L = 0.0*self.luminosity[f].unit
+
+                a_P = self.pinch[f][index_BH]
+                b_P = self.pinch[f][index_BH]
+
+
+                new_meanE[f] = custom_sigmoid(t_values, a_E, b_E, t1, w)
+                new_luminosity[f] = custom_sigmoid(t_values, a_L,b_L, t1, w)
+                new_pinch[f] = custom_sigmoid(t_values, a_P,b_P, t1, w)  # This remains constants for now.
+
+                self.meanE[f]      = np.concatenate((self.meanE[f][:index_BH], new_meanE[f], b_E*(1+0*self.meanE[f][index_BH+2:].value)))
+                self.luminosity[f] = np.concatenate((self.luminosity[f][:index_BH], new_luminosity[f], b_L*self.luminosity[f][index_BH+2:].value))
+                self.pinch[f] = np.concatenate((self.pinch[f][:index_BH], new_pinch[f],self.pinch[f][index_BH+2:]))
+
+
+                #self.luminosity[f][index_BH:] = 0 * self.luminosity[f].unit # Setting the luminosity to 0.0 erg/s
 
         # Initialize the superclass with the time, QCD_effect_time, and metadata
         super().__init__(time, QCD_effect_time, BH_effect_time, metadata)
