@@ -601,6 +601,7 @@ class PinchedModel(SupernovaModel):
             high_scaling_L = {"0": 0.32, "1": 0.9, "2": 1.16, "3": 0.9}
             high_scaling_E = {"0": 0.45, "1": 1.3, "2": 0.6, "3": 1.45}
 
+
         # Iterate through each flavor and set the corresponding properties
         for i, f in enumerate(Flavor):
             self.luminosity[f] = simtab[f'L_{f.name}']# << u.erg / u.s
@@ -630,7 +631,13 @@ class PinchedModel(SupernovaModel):
             new_meanE = {}
             new_luminosity = {}
             new_pinch = {}
+
+            new_right_meanE = {}
+            new_right_luminosity = {}
+            new_right_pinch = {}
+
             high_scaling_E = {"0": 28, "1": 23, "2": 32, "3": 23}
+            high_scaling_L_low = {"0": 1.0/75., "1": 1.0/80., "2": 1.0/80., "3": 1.0/80}
 
             index_BH = np.where(time >= BH_effect_time.to(u.s))[0][0]
 
@@ -640,9 +647,13 @@ class PinchedModel(SupernovaModel):
                 k = 10 / w
                 return a + (b - a) / (1 + np.exp(-k * (t - t1 - w / 2)))
 
+
             w = 0.5
+            #print("Yves Yves", custom_sigmoid(0.53852991*u.s,2.5134205498581e+52*self.luminosity[f].unit,0.0*self.luminosity[f].unit,0.537185413897*u.s,w))
+
             t1 = time[index_BH]
             t_values = np.arange(t1.value, time[index_BH+2].value, 0.00001) * time.unit  # Generating new time values
+            t_right=time[index_BH+2:]
             time = np.concatenate((time[:index_BH], t_values, time[index_BH+2:]))
             self.t_values = t_values
 
@@ -651,7 +662,7 @@ class PinchedModel(SupernovaModel):
                 b_E = high_scaling_E[str(i)] * self.meanE[f].unit  # Ending value
 
                 a_L = self.luminosity[f][index_BH]
-                b_L = 0.0*self.luminosity[f].unit
+                b_L = high_scaling_L_low[str(i)]*self.luminosity[f][-1]#0.0*self.luminosity[f].unit
 
                 a_P = self.pinch[f][index_BH]
                 b_P = self.pinch[f][index_BH]
@@ -661,9 +672,18 @@ class PinchedModel(SupernovaModel):
                 new_luminosity[f] = custom_sigmoid(t_values, a_L,b_L, t1, w)
                 new_pinch[f] = custom_sigmoid(t_values, a_P,b_P, t1, w)  # This remains constants for now.
 
-                self.meanE[f]      = np.concatenate((self.meanE[f][:index_BH], new_meanE[f], b_E*(1+0*self.meanE[f][index_BH+2:].value)))
-                self.luminosity[f] = np.concatenate((self.luminosity[f][:index_BH], new_luminosity[f], b_L*self.luminosity[f][index_BH+2:].value))
-                self.pinch[f] = np.concatenate((self.pinch[f][:index_BH], new_pinch[f],self.pinch[f][index_BH+2:]))
+
+
+                new_right_meanE[f] = custom_sigmoid(t_right, a_E, b_E, t1, w)
+                new_right_luminosity[f] = custom_sigmoid(t_right, a_L,b_L, t1, w)
+                new_right_pinch[f] = custom_sigmoid(t_right, a_P,b_P, t1, w)  # This remains constants for now.
+
+                #print(a_L,b_L, t1, w,new_luminosity[f], "Yves", new_right_luminosity[f], t_right)
+
+
+                self.meanE[f]      = np.concatenate((self.meanE[f][:index_BH], new_meanE[f], new_right_meanE[f]))
+                self.luminosity[f] = np.concatenate((self.luminosity[f][:index_BH], new_luminosity[f], new_right_luminosity[f]))
+                self.pinch[f] = np.concatenate((self.pinch[f][:index_BH], new_pinch[f], new_right_pinch[f]))
 
 
                 #self.luminosity[f][index_BH:] = 0 * self.luminosity[f].unit # Setting the luminosity to 0.0 erg/s
